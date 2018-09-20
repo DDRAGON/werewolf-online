@@ -2,4 +2,16 @@ extends layout
 
 block content
   h1= title
-  p Welcome to #{title}
+  if user
+      h4 以下のアカウントでゲームに参加できます。
+      h2 #{user.displayName}　
+        img(src=`${user.photos[0].value}`)
+      h4
+        a(href='logout') ログアウトするにはこちら
+      script#main(src="/javascripts/index/bundle.js", data-displayName=`${displayName}`, data-thumbUrl=`${thumbUrl}`, data-ipAddress=`${ipAddress}`)
+    else
+      h3 記録を残すには twitter でログインしてください。
+      h3
+        a(href='login/twitter') Twitter でログイン
+      h3
+        a(href='game') 匿名でゲームに参加
