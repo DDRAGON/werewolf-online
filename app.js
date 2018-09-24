@@ -11,7 +11,7 @@ var helmet = require('helmet');
 var config = require('./config');
 
 var index = require('./routes/index');
-var users = require('./routes/users');
+var table = require('./routes/table');
 
 // Configure the Twitter strategy for use by Passport.
 //
@@ -77,7 +77,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use('/', index);
-app.use('/users', users);
+app.use('/table', ensureAuthenticated, table);
 
 app.get('/auth/twitter',
     passport.authenticate('twitter')
