@@ -1,8 +1,17 @@
 body {
-  padding: 50px;
+  padding: 70px;
   font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
 }
 
 a {
   color: #00B7FF;
+}
+
+p.matchingTable {
+    width: 180px;
+    height: 160px;
+    margin: 10px;
+    background-color: #66FF66;
+    border: outset 2px #000000;
+    float:left;
 }
