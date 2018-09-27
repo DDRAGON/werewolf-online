@@ -4,11 +4,12 @@ var config = require('../config');
 
 /* GET users listing. */
 router.get('/:tableId', function(req, res, next) {
+  let tableId;
   let displayName = '';
   let thumbUrl = '';
 
   try {
-    const tableId = Number(req.params.tableId);
+    tableId = Number(req.params.tableId);
     if (req.user) {
         displayName = req.user.displayName;
         thumbUrl = req.user.photos[0].value;

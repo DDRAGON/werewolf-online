@@ -1,0 +1,10 @@
+extends layout
+
+block content
+  canvas#mainCanvas.tablePart
+  br
+  div#participants.tablePart
+  div#chat
+    div#mainChat.tablePart
+    div#private.tablePart
+  script#main(src="/javascripts/table/bundle.js", data-displayName=`${displayName}`, data-thumbUrl=`${thumbUrl}`, data-ipAddress=`${ipAddress}`)
