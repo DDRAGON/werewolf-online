@@ -21,7 +21,15 @@ router.get('/:tableId', function(req, res, next) {
   }
 
   if (1 <= tableId && tableId <= 16) {
-    res.render('table', { title: '人狼オンライン', displayName: displayName, thumbUrl: thumbUrl, ipAddress: config.ipAddress });
+    res.render('table',
+        {
+          title: '人狼オンライン',
+          displayName: displayName,
+          thumbUrl: thumbUrl,
+          ipAddress: config.ipAddress,
+          tableId: tableId
+        }
+    );
   } else {
     res.redirect('/');
   }

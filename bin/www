@@ -88,3 +88,9 @@ function onListening() {
     : 'port ' + addr.port;
   debug('Listening on ' + bind);
 }
+
+var io = require('socket.io')(server);
+// モジュールを呼び出す
+var game = require('../my_modules/game');
+var tableSocketServer = require('../sockets/tableSocket');
+tableSocketServer.createTableSocketServer(io, game);

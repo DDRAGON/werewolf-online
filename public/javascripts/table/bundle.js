@@ -14339,11 +14339,26 @@ var _jquery2 = _interopRequireDefault(_jquery);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var socket = (0, _socket2.default)((0, _jquery2.default)('#main').attr('data-ipAddress'));
+var clientObj = {
+    displayName: (0, _jquery2.default)('#dataDiv').attr('data-displayName'),
+    thumbUrl: (0, _jquery2.default)('#dataDiv').attr('data-thumbUrl'),
+    ipAddress: (0, _jquery2.default)('#dataDiv').attr('data-ipAddress'),
+    tableId: (0, _jquery2.default)('#dataDiv').attr('data-tableId')
+};
+
+var socket = (0, _socket2.default)(clientObj.ipAddress + '/table' + clientObj.tableId);
 var canvas = (0, _jquery2.default)('#mainCanvas')[0];
 canvas.width = 560;
 canvas.height = 160;
 var ctx = canvas.getContext('2d');
+
+socket.on('start data', function (startObj) {
+    console.log(startObj);
+});
+
+socket.on('disconnect', function () {
+    socket.disconnect();
+});
 
 /***/ }),
 /* 27 */
