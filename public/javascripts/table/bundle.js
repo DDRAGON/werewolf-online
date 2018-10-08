@@ -14377,7 +14377,6 @@ function drawPlayersList(players) {
    var _iteratorError = undefined;
 
    try {
-
       for (var _iterator = players[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
          var _ref = _step.value;
 
@@ -14386,13 +14385,10 @@ function drawPlayersList(players) {
          var playerId = _ref2[0];
          var player = _ref2[1];
 
-         console.log(player);
          (0, _jquery2.default)('<div>', {
             id: playerId,
             text: player.displayName
          }).appendTo('#participants');
-         //console.log($('<div>', { id:'hoge', class:'fuga', text:'piyo' }););
-         // $('<li>追加されました</li>').appendTo('#participants');
       }
    } catch (err) {
       _didIteratorError = true;

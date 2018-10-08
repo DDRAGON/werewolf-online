@@ -5,7 +5,11 @@ block content
   br
   div#participants.tablePart
   div#chat
-    div#mainChat.tablePart
+    div#mainChatBox.tablePart
+      div#mainChat
+      div#submitChat
+        input#mainChatInput
+        button#mainChatButton(value='送信') 送信
     div#private.tablePart
   div#dataDiv(data-displayName=`${displayName}`, data-thumbUrl=`${thumbUrl}`, data-twitterId=`${twitterId}`, data-ipAddress=`${ipAddress}`, data-tableId=`${tableId}`)
   script#main(src="/javascripts/table/bundle.js")

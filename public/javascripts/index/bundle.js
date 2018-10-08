@@ -81,12 +81,10 @@ var _loop = function _loop(id) {
 
    (0, _jquery2.default)('#join-button' + id).click(function () {
       location.href = 'table/' + id;
-      console.log('クリックされました！');
    });
 
    (0, _jquery2.default)('#watch-button' + id).click(function () {
       location.href = 'table/' + id + '?mode=watch';
-      console.log('クリックされました！');
    });
 };
 
