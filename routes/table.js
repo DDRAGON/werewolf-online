@@ -7,12 +7,14 @@ router.get('/:tableId', function(req, res, next) {
   let tableId;
   let displayName = '';
   let thumbUrl = '';
+  let twitterId;
 
   try {
     tableId = Number(req.params.tableId);
     if (req.user) {
         displayName = req.user.displayName;
         thumbUrl = req.user.photos[0].value;
+        twitterId = req.user.id;
     } else {
         res.redirect('/');
     }
@@ -26,6 +28,7 @@ router.get('/:tableId', function(req, res, next) {
           title: '人狼オンライン',
           displayName: displayName,
           thumbUrl: thumbUrl,
+          twitterId: twitterId,
           ipAddress: config.ipAddress,
           tableId: tableId
         }

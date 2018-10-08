@@ -7,27 +7,38 @@ function createTableSocketServer(io, game) {
         const rootIo = io.of(`/table${tableId}`);
         rootIo.on('connection', function (socket) {
 
-            const startObj = game.newConnection(socket.id);
-            socket.emit('start data', startObj);
+           const displayName = socket.handshake.query.displayName;
+           const thumbUrl = socket.handshake.query.thumbUrl;
+           const twitterId = socket.handshake.query.twitterId;
 
-            /*
+           if (!displayName || !thumbUrl || !twitterId) { // バリデーション
+              socket.disconnect();
+              return;
+           }
 
-            socket.on('user data', (userData) => {
-                game.updateUserData(socket.id, userData.displayName, userData.thumbUrl);
-            });
+           const startObj = game.newConnection(socket.id, tableId, displayName, thumbUrl, twitterId);
+           socket.emit('start data', startObj);
+           rootIo.emit('players list', game.getPlayersList(tableId));
 
-            socket.on('change direction', (direction) => {
-                game.updatePlayerDirection(socket.id, direction);
-            });
 
-            socket.on('missile emit', (direction) => {
-                game.missileEmit(socket.id, direction);
-            });
+           /*
 
-            socket.on('disconnect', () => {
-                game.disconnect(socket.id);
-            });
-            */
+           socket.on('user data', (userData) => {
+               game.updateUserData(socket.id, userData.displayName, userData.thumbUrl);
+           });
+
+           socket.on('change direction', (direction) => {
+               game.updatePlayerDirection(socket.id, direction);
+           });
+
+           socket.on('missile emit', (direction) => {
+               game.missileEmit(socket.id, direction);
+           });
+
+           socket.on('disconnect', () => {
+               game.disconnect(socket.id);
+           });
+           */
         });
 
         tableSocketsMap.set(tableId, rootIo);

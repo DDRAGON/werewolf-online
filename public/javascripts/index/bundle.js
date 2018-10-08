@@ -78,14 +78,20 @@ var _jquery2 = _interopRequireDefault(_jquery);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var _loop = function _loop(id) {
-    (0, _jquery2.default)('#join-button' + id).click(function () {
-        location.href = 'table/' + id;
-        console.log('クリックされました！');
-    });
+
+   (0, _jquery2.default)('#join-button' + id).click(function () {
+      location.href = 'table/' + id;
+      console.log('クリックされました！');
+   });
+
+   (0, _jquery2.default)('#watch-button' + id).click(function () {
+      location.href = 'table/' + id + '?mode=watch';
+      console.log('クリックされました！');
+   });
 };
 
 for (var id = 1; id <= 16; id++) {
-    _loop(id);
+   _loop(id);
 }
 
 /***/ }),
