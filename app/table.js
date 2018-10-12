@@ -9,19 +9,39 @@ const clientObj = {
    ipAddress: $('#dataDiv').attr('data-ipAddress'),
    tableId: $('#dataDiv').attr('data-tableId'),
    participantsElement: $('#participants'),
-   players: new Map()
+   players: new Map(),
+   chatAutoScroll: true
 };
 
 const socketQueryParameters = `displayName=${clientObj.displayName}&thumbUrl=${clientObj.thumbUrl}&twitterId=${clientObj.twitterId}`;
-const socket = io(`${clientObj.ipAddress}/table${clientObj.tableId}?${socketQueryParameters}`);
+const socket = io(`http://${location.host}/table${clientObj.tableId}?${socketQueryParameters}`);
 const canvas = $('#mainCanvas')[0];
 canvas.width = 560;
 canvas.height = 160;
 const ctx = canvas.getContext('2d');
 
+$('#mainChatButton').click(function() {
+   const inputValue = $('#mainChatInput').val().trim();
+   $('#mainChatInput').val(''); // 空にする
+   if (inputValue == "") { return; } // 何もしない
+
+   socket.emit('chat text', inputValue);
+});
+
+$('#mainChat').on('scroll', function(){
+   clientObj.chatAutoScroll = false;
+   const scrollHeight = $('#mainChat').get(0).scrollHeight; // 要素の大きさ
+   const scrollBottom = $('#mainChat').scrollTop() + $('#mainChat').innerHeight();
+   if (scrollHeight <= (scrollBottom + 5)) {
+      clientObj.chatAutoScroll = true;
+   }
+});
 
 socket.on('start data', (startObj) => {
-    // console.log(startObj);
+   const chats = new Map(startObj.chats);
+   for ([chatId, chatObj] of chats) {
+      addChat(chatObj);
+   }
 });
 
 socket.on('players list', (playersArray) => {
@@ -29,16 +49,47 @@ socket.on('players list', (playersArray) => {
    drawPlayersList(clientObj.players);
 });
 
+socket.on('new chat', (chatObj) => {
+   addChat(chatObj);
+});
+
+
 
 socket.on('disconnect', () => {
     socket.disconnect();
 });
 
 function drawPlayersList(players) {
+   $('#participants').empty();
    for (let [playerId, player] of players) {
       $('<div>', {
          id: playerId,
          text: player.displayName
       }).appendTo('#participants');
    }
+}
+
+function addChat(chatObj) {
+   const addHTML = `
+<p id="${chatObj.chatId}">
+   <img src="${chatObj.thumbUrl}">
+   <span>${chatObj.displayName}</span>
+   <span>${chatObj.chatTime}</span>
+   <br>
+   <span>${chatObj.chatText}</span>
+</p>`;
+
+   $('#mainChat').append(addHTML);
+
+   if (clientObj.chatAutoScroll === true) {
+      $('#mainChat').scrollTop($('#mainChat').get(0).scrollHeight);
+   }
+      /*
+   clientObj.chatAutoScroll = false;
+   const scrollHeight = $('#mainChat').get(0).scrollHeight); // 要素の大きさ
+   const scrollBottom = $('#mainChat').scrollTop() + $('#mainChat').innerHeight();
+   if (scrollHeight <= (scrollBottom + 3)) {
+      clientObj.chatAutoScroll = true;
+      }
+      */
 }

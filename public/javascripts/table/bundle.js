@@ -14348,47 +14348,51 @@ var clientObj = {
    ipAddress: (0, _jquery2.default)('#dataDiv').attr('data-ipAddress'),
    tableId: (0, _jquery2.default)('#dataDiv').attr('data-tableId'),
    participantsElement: (0, _jquery2.default)('#participants'),
-   players: new Map()
+   players: new Map(),
+   chatAutoScroll: true
 };
 
 var socketQueryParameters = 'displayName=' + clientObj.displayName + '&thumbUrl=' + clientObj.thumbUrl + '&twitterId=' + clientObj.twitterId;
-var socket = (0, _socket2.default)(clientObj.ipAddress + '/table' + clientObj.tableId + '?' + socketQueryParameters);
+var socket = (0, _socket2.default)('http://' + location.host + '/table' + clientObj.tableId + '?' + socketQueryParameters);
 var canvas = (0, _jquery2.default)('#mainCanvas')[0];
 canvas.width = 560;
 canvas.height = 160;
 var ctx = canvas.getContext('2d');
 
+(0, _jquery2.default)('#mainChatButton').click(function () {
+   var inputValue = (0, _jquery2.default)('#mainChatInput').val().trim();
+   (0, _jquery2.default)('#mainChatInput').val(''); // 空にする
+   if (inputValue == "") {
+      return;
+   } // 何もしない
+
+   socket.emit('chat text', inputValue);
+});
+
+(0, _jquery2.default)('#mainChat').on('scroll', function () {
+   clientObj.chatAutoScroll = false;
+   var scrollHeight = (0, _jquery2.default)('#mainChat').get(0).scrollHeight; // 要素の大きさ
+   var scrollBottom = (0, _jquery2.default)('#mainChat').scrollTop() + (0, _jquery2.default)('#mainChat').innerHeight();
+   if (scrollHeight <= scrollBottom + 3) {
+      clientObj.chatAutoScroll = true;
+   }
+});
+
 socket.on('start data', function (startObj) {
-   // console.log(startObj);
-});
-
-socket.on('players list', function (playersArray) {
-   clientObj.players = new Map(playersArray);
-   drawPlayersList(clientObj.players);
-});
-
-socket.on('disconnect', function () {
-   socket.disconnect();
-});
-
-function drawPlayersList(players) {
+   var chats = new Map(startObj.chats);
    var _iteratorNormalCompletion = true;
    var _didIteratorError = false;
    var _iteratorError = undefined;
 
    try {
-      for (var _iterator = players[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+      for (var _iterator = chats[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
          var _ref = _step.value;
 
-         var _ref2 = _slicedToArray(_ref, 2);
+         var _ref2 = _slicedToArray(_ref, 2),
+             chatId = _ref2[0],
+             chatObj = _ref2[1];
 
-         var playerId = _ref2[0];
-         var player = _ref2[1];
-
-         (0, _jquery2.default)('<div>', {
-            id: playerId,
-            text: player.displayName
-         }).appendTo('#participants');
+         addChat(chatObj);
       }
    } catch (err) {
       _didIteratorError = true;
@@ -14404,6 +14408,73 @@ function drawPlayersList(players) {
          }
       }
    }
+});
+
+socket.on('players list', function (playersArray) {
+   clientObj.players = new Map(playersArray);
+   drawPlayersList(clientObj.players);
+});
+
+socket.on('new chat', function (chatObj) {
+   addChat(chatObj);
+});
+
+socket.on('disconnect', function () {
+   socket.disconnect();
+});
+
+function drawPlayersList(players) {
+   (0, _jquery2.default)('#participants').empty();
+   var _iteratorNormalCompletion2 = true;
+   var _didIteratorError2 = false;
+   var _iteratorError2 = undefined;
+
+   try {
+      for (var _iterator2 = players[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+         var _ref3 = _step2.value;
+
+         var _ref4 = _slicedToArray(_ref3, 2);
+
+         var playerId = _ref4[0];
+         var player = _ref4[1];
+
+         (0, _jquery2.default)('<div>', {
+            id: playerId,
+            text: player.displayName
+         }).appendTo('#participants');
+      }
+   } catch (err) {
+      _didIteratorError2 = true;
+      _iteratorError2 = err;
+   } finally {
+      try {
+         if (!_iteratorNormalCompletion2 && _iterator2.return) {
+            _iterator2.return();
+         }
+      } finally {
+         if (_didIteratorError2) {
+            throw _iteratorError2;
+         }
+      }
+   }
+}
+
+function addChat(chatObj) {
+   var addHTML = '\n<p id="' + chatObj.chatId + '">\n   <img src="' + chatObj.thumbUrl + '">\n   <span>' + chatObj.displayName + '</span>\n   <span>' + chatObj.chatTime + '</span>\n   <br>\n   <span>' + chatObj.chatText + '</span>\n</p>';
+
+   (0, _jquery2.default)('#mainChat').append(addHTML);
+
+   if (clientObj.chatAutoScroll === true) {
+      (0, _jquery2.default)('#mainChat').scrollTop((0, _jquery2.default)('#mainChat').get(0).scrollHeight);
+   }
+   /*
+   clientObj.chatAutoScroll = false;
+   const scrollHeight = $('#mainChat').get(0).scrollHeight); // 要素の大きさ
+   const scrollBottom = $('#mainChat').scrollTop() + $('#mainChat').innerHeight();
+   if (scrollHeight <= (scrollBottom + 3)) {
+   clientObj.chatAutoScroll = true;
+   }
+   */
 }
 
 /***/ }),

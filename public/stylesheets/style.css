@@ -40,6 +40,7 @@ p.matchingTable {
 
 #mainChat {
     height: calc(100% - 22px);
+    overflow: scroll;
 }
 #submitChat {
     height: 22px;
@@ -47,7 +48,7 @@ p.matchingTable {
 
 #mainChatInput {
     float: left;
-    width: calc(100% - 88px);
+    width: calc(100% - 95px);
     height: 16px;
 }
 

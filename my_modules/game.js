@@ -1,7 +1,7 @@
 const uuidv3 = require('uuid/v3');
 
 const tables = [];
-for (let i = 0; i <= 16; i++) {
+for (let i = 1; i <= 16; i++) {
    const table = {
       players: new Map(),
       playerBySockets: new Map(),
@@ -32,7 +32,7 @@ function newConnection(socketId, tableId, displayName, thumbUrl, twitterId) {
    gameObj.tables[tableId] =  table;
 
    return {
-      message: 'Hello!'
+      chats: Array.from(table.chats)
    };
 }
 
@@ -40,11 +40,33 @@ function getPlayersList(tableId) {
    return Array.from(gameObj.tables[tableId].players);
 }
 
+function gotChatText(socketId, tableId, displayName, thumbUrl, chatText) {
+   console.log({socketId, tableId, displayName, thumbUrl, chatText});
+   const chatTime = new Date().getTime();
+   const chatId = calcChatId(tableId, displayName, chatText, chatTime);
+   const chatObj = {
+      chatId,
+      chatText,
+      displayName,
+      thumbUrl,
+      chatTime
+   }
+   const table = gameObj.tables[tableId];
+   table.chats.set(chatId, chatObj);
+   return chatObj;
+}
+
+
 function calcPlayerId(tableId, displayName, twitterId) {
    return tableId +',' + displayName + ',' + twitterId;
 }
 
+function calcChatId(tableId, displayName, chatText, chatTime) {
+   return tableId +',' + displayName + ',' + chatText + ',' + chatTime;
+}
+
 module.exports = {
    newConnection,
-   getPlayersList
+   getPlayersList,
+   gotChatText
 };

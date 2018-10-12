@@ -20,12 +20,12 @@ function createTableSocketServer(io, game) {
            socket.emit('start data', startObj);
            rootIo.emit('players list', game.getPlayersList(tableId));
 
-
-           /*
-
-           socket.on('user data', (userData) => {
-               game.updateUserData(socket.id, userData.displayName, userData.thumbUrl);
+           socket.on('chat text', (chatText) => {
+               const chatObj = game.gotChatText(socket.id, tableId, displayName, thumbUrl, chatText);
+               rootIo.emit('new chat', chatObj);
            });
+
+       /*
 
            socket.on('change direction', (direction) => {
                game.updatePlayerDirection(socket.id, direction);
