@@ -14373,12 +14373,13 @@ var ctx = canvas.getContext('2d');
    clientObj.chatAutoScroll = false;
    var scrollHeight = (0, _jquery2.default)('#mainChat').get(0).scrollHeight; // 要素の大きさ
    var scrollBottom = (0, _jquery2.default)('#mainChat').scrollTop() + (0, _jquery2.default)('#mainChat').innerHeight();
-   if (scrollHeight <= scrollBottom + 3) {
+   if (scrollHeight <= scrollBottom + 5) {
       clientObj.chatAutoScroll = true;
    }
 });
 
 socket.on('start data', function (startObj) {
+   (0, _jquery2.default)('#mainChat').empty();
    var chats = new Map(startObj.chats);
    var _iteratorNormalCompletion = true;
    var _didIteratorError = false;
@@ -14417,10 +14418,6 @@ socket.on('players list', function (playersArray) {
 
 socket.on('new chat', function (chatObj) {
    addChat(chatObj);
-});
-
-socket.on('disconnect', function () {
-   socket.disconnect();
 });
 
 function drawPlayersList(players) {

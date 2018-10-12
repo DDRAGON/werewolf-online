@@ -38,6 +38,7 @@ $('#mainChat').on('scroll', function(){
 });
 
 socket.on('start data', (startObj) => {
+   $('#mainChat').empty();
    const chats = new Map(startObj.chats);
    for ([chatId, chatObj] of chats) {
       addChat(chatObj);
@@ -51,12 +52,6 @@ socket.on('players list', (playersArray) => {
 
 socket.on('new chat', (chatObj) => {
    addChat(chatObj);
-});
-
-
-
-socket.on('disconnect', () => {
-    socket.disconnect();
 });
 
 function drawPlayersList(players) {
