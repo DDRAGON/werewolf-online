@@ -14360,13 +14360,14 @@ canvas.height = 160;
 var ctx = canvas.getContext('2d');
 
 (0, _jquery2.default)('#mainChatButton').click(function () {
-   var inputValue = (0, _jquery2.default)('#mainChatInput').val().trim();
+   var inputValue = (0, _jquery2.default)('#mainChatInput').val();
    (0, _jquery2.default)('#mainChatInput').val(''); // 空にする
    if (inputValue == "") {
       return;
    } // 何もしない
 
-   socket.emit('chat text', inputValue);
+   var escapedSendMessage = (0, _jquery2.default)('<p/>').text(inputValue).html(); // エスケープ
+   socket.emit('chat text', escapedSendMessage);
 });
 
 (0, _jquery2.default)('#mainChat').on('scroll', function () {
@@ -14457,21 +14458,13 @@ function drawPlayersList(players) {
 }
 
 function addChat(chatObj) {
-   var addHTML = '\n<p id="' + chatObj.chatId + '">\n   <img src="' + chatObj.thumbUrl + '">\n   <span>' + chatObj.displayName + '</span>\n   <span>' + chatObj.chatTime + '</span>\n   <br>\n   <span>' + chatObj.chatText + '</span>\n</p>';
+   var addHTML = '\n<p id="' + chatObj.chatId + '">\n   <img src="' + chatObj.thumbUrl + '" align="left">\n   <span>' + chatObj.displayName + '</span>\n   <span>' + chatObj.chatTime + '</span>\n   <br>\n   <span>' + chatObj.chatText + '</span>\n</p>';
 
    (0, _jquery2.default)('#mainChat').append(addHTML);
 
    if (clientObj.chatAutoScroll === true) {
       (0, _jquery2.default)('#mainChat').scrollTop((0, _jquery2.default)('#mainChat').get(0).scrollHeight);
    }
-   /*
-   clientObj.chatAutoScroll = false;
-   const scrollHeight = $('#mainChat').get(0).scrollHeight); // 要素の大きさ
-   const scrollBottom = $('#mainChat').scrollTop() + $('#mainChat').innerHeight();
-   if (scrollHeight <= (scrollBottom + 3)) {
-   clientObj.chatAutoScroll = true;
-   }
-   */
 }
 
 /***/ }),

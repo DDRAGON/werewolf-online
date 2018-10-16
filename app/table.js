@@ -21,11 +21,12 @@ canvas.height = 160;
 const ctx = canvas.getContext('2d');
 
 $('#mainChatButton').click(function() {
-   const inputValue = $('#mainChatInput').val().trim();
+   const inputValue = $('#mainChatInput').val();
    $('#mainChatInput').val(''); // 空にする
    if (inputValue == "") { return; } // 何もしない
 
-   socket.emit('chat text', inputValue);
+   const escapedSendMessage = $('<p/>').text(inputValue).html();// エスケープ
+   socket.emit('chat text', escapedSendMessage);
 });
 
 $('#mainChat').on('scroll', function(){
@@ -67,7 +68,7 @@ function drawPlayersList(players) {
 function addChat(chatObj) {
    const addHTML = `
 <p id="${chatObj.chatId}">
-   <img src="${chatObj.thumbUrl}">
+   <img src="${chatObj.thumbUrl}" align="left">
    <span>${chatObj.displayName}</span>
    <span>${chatObj.chatTime}</span>
    <br>
@@ -79,12 +80,4 @@ function addChat(chatObj) {
    if (clientObj.chatAutoScroll === true) {
       $('#mainChat').scrollTop($('#mainChat').get(0).scrollHeight);
    }
-      /*
-   clientObj.chatAutoScroll = false;
-   const scrollHeight = $('#mainChat').get(0).scrollHeight); // 要素の大きさ
-   const scrollBottom = $('#mainChat').scrollTop() + $('#mainChat').innerHeight();
-   if (scrollHeight <= (scrollBottom + 3)) {
-      clientObj.chatAutoScroll = true;
-      }
-      */
 }
