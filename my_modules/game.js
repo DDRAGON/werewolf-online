@@ -6,6 +6,7 @@ for (let tableId = 1; tableId <= 16; tableId++) {
    const table = {
        players: new Map(),
        playerBySockets: new Map(),
+       AIs: new Map(),
        chats: new Map(),
        tableState: 'waiting'
    };
@@ -37,7 +38,11 @@ function newConnection(socketId, tableId, displayName, thumbUrl, twitterId) {
 
    table.players.set(playerId, player);
    table.playerBySockets.set(socketId, player);
-   gameObj.tables[tableId] =  table;
+   //gameObj.tables[tableId] =  table;
+
+   // トップページに送信
+    const tablesInfo = entryConnection();
+    gameObj.EntryRootIo.emit('tables data', tablesInfo);
 
    return {
       chats: Array.from(table.chats)
@@ -69,7 +74,8 @@ function entryConnection() {
     for (let tableId = 1; tableId <= 16; tableId++) {
         tablesInfo[tableId] = {
             startTime: gameObj.tables[tableId].startTime,
-            tableState: gameObj.tables[tableId].tableState
+            tableState: gameObj.tables[tableId].tableState,
+            playersNum: gameObj.tables[tableId].players.size
        };
    }
 
@@ -80,6 +86,12 @@ function startGame(tableId) {
     tables[tableId].tableState = 'gaming';
     const tablesInfo = entryConnection();
     gameObj.EntryRootIo.emit('tables data', tablesInfo);
+
+    addAIs(tableId); // AI の追加
+    // 役職決め
+
+
+    gameObj.tableSocketsMap.get(tableId).emit('game start', {});
 }
 
 function registerEntryRootIo(rootIo){
@@ -88,6 +100,18 @@ function registerEntryRootIo(rootIo){
 
 function registerTablesRootIo(tableSocketsMap) {
     gameObj.tableSocketsMap = tableSocketsMap;
+}
+
+function addAIs(tableId) {
+    for(let aiId = 1; aiId < (10 - gameObj.tables[tableId].players.size); aiId++) {
+        const ai = {
+            tableId,
+            displayName: `AI${aiId}`,
+            thumbUrl: nul,
+            twitterId: `AI${aiId}`
+        };
+        tables[tableId].AIs.set(`AI${aiId}`, ai);
+    }
 }
 
 function calcPlayerId(tableId, displayName, twitterId) {
