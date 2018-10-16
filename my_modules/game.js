@@ -1,13 +1,21 @@
-const uuidv3 = require('uuid/v3');
+const moment = require('moment-timezone');
+moment.tz.setDefault("Asia/Tokyo");
 
 const tables = [];
-for (let i = 1; i <= 16; i++) {
+for (let tableId = 1; tableId <= 16; tableId++) {
    const table = {
-      players: new Map(),
-      playerBySockets: new Map(),
-      chats: new Map()
+       players: new Map(),
+       playerBySockets: new Map(),
+       chats: new Map(),
+       tableState: 'waiting'
    };
-   tables[i] = table;
+
+    const dt = new Date();
+    dt.setMinutes(dt.getMinutes() + 1 + (tableId-1)*10);
+    table.startTime = dt.getTime();
+
+    setTimeout(function() {startGame(tableId);}, dt.getTime() - new Date().getTime()); // ゲーム開始時刻の設定
+   tables[tableId] = table;
 }
 
 const gameObj = {
@@ -50,12 +58,37 @@ function gotChatText(socketId, tableId, displayName, thumbUrl, chatText) {
       displayName,
       thumbUrl,
       chatTime
-   }
+   };
    const table = gameObj.tables[tableId];
    table.chats.set(chatId, chatObj);
    return chatObj;
 }
 
+function entryConnection() {
+    const tablesInfo = [];
+    for (let tableId = 1; tableId <= 16; tableId++) {
+        tablesInfo[tableId] = {
+            startTime: gameObj.tables[tableId].startTime,
+            tableState: gameObj.tables[tableId].tableState
+       };
+   }
+
+   return tablesInfo;
+}
+
+function startGame(tableId) {
+    tables[tableId].tableState = 'gaming';
+    const tablesInfo = entryConnection();
+    gameObj.EntryRootIo.emit('tables data', tablesInfo);
+}
+
+function registerEntryRootIo(rootIo){
+    gameObj.EntryRootIo = rootIo;
+}
+
+function registerTablesRootIo(tableSocketsMap) {
+    gameObj.tableSocketsMap = tableSocketsMap;
+}
 
 function calcPlayerId(tableId, displayName, twitterId) {
    return tableId +',' + displayName + ',' + twitterId;
@@ -66,7 +99,10 @@ function calcChatId(tableId, displayName, chatText, chatTime) {
 }
 
 module.exports = {
-   newConnection,
-   getPlayersList,
-   gotChatText
+    newConnection,
+    getPlayersList,
+    gotChatText,
+    entryConnection,
+    registerEntryRootIo,
+    registerTablesRootIo
 };

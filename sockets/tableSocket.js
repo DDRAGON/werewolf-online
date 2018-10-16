@@ -43,6 +43,8 @@ function createTableSocketServer(io, game) {
 
         tableSocketsMap.set(tableId, rootIo);
     }
+
+    game.registerTablesRootIo(tableSocketsMap);
 }
 
 module.exports = {

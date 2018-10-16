@@ -17,6 +17,14 @@ p.matchingTable {
     float:left;
 }
 
+span.startTime {
+    text-align: center;
+    background-color: #FFFFFF;
+    padding: 2px;
+    margin: 2px;
+    display: block;
+}
+
 #mainCanvas {
 
 }

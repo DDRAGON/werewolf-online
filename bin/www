@@ -94,3 +94,5 @@ var io = require('socket.io')(server);
 var game = require('../my_modules/game');
 var tableSocketServer = require('../sockets/tableSocket');
 tableSocketServer.createTableSocketServer(io, game);
+var entrySocketServer = require('../sockets/entrySocket');
+entrySocketServer.createEntrySocketServer(io, game);
