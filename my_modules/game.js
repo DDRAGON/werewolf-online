@@ -29,28 +29,59 @@ function newConnection(socketId, tableId, displayName, thumbUrl, twitterId) {
    const table = gameObj.tables[tableId];
    const playerId = calcPlayerId(tableId, displayName, twitterId);
 
-   const player = {
-      tableId,
-      displayName,
-      thumbUrl,
-      twitterId
-   };
+   if (!table.players.has(playerId)) {
+       // new player
+       const player = {
+           tableId,
+           displayName,
+           thumbUrl,
+           twitterId,
+           socketId
+       };
 
-   table.players.set(playerId, player);
-   table.playerBySockets.set(socketId, player);
-   //gameObj.tables[tableId] =  table;
+       table.players.set(playerId, player);
+       table.playerBySockets.set(socketId, {playerId});
 
-   // トップページに送信
-    const tablesInfo = entryConnection();
-    gameObj.EntryRootIo.emit('tables data', tablesInfo);
+       // トップページに送信
+       const tablesInfo = entryConnection();
+       gameObj.EntryRootIo.emit('tables data', tablesInfo);
+
+   } else {
+       const previousPlayer = table.players.get(playerId);
+       const previousSocketId = previousPlayer.socketId;
+       const role = previousPlayer.role;
+       table.playerBySockets.delete(previousSocketId);
+       table.playerBySockets.set(socketId, {playerId});
+       previousPlayer.socketId = socketId;
+       if (previousPlayer.role) {
+           gameObj.tableSocketsMap.get(tableId).to(socketId).emit('your role', role);
+       }
+   }
 
    return {
-      chats: Array.from(table.chats)
+      chats: Array.from(table.chats),
+       startTime:  table.startTime,
+       tableState: table.tableState
    };
 }
 
 function getPlayersList(tableId) {
-   return Array.from(gameObj.tables[tableId].players);
+    const playersList = new Map();
+    for ([playerId, player] of gameObj.tables[tableId].players) {
+        playersList.set(playerId, {
+            playerId,
+            displayName: player.displayName,
+            type: 'player'
+        });
+    }
+    for ([aiId, ai] of gameObj.tables[tableId].AIs) {
+        playersList.set(aiId, {
+            aiId,
+            displayName: ai.displayName,
+            type: 'AI'
+        });
+    }
+   return Array.from(playersList);
 }
 
 function gotChatText(socketId, tableId, displayName, thumbUrl, chatText) {
@@ -90,8 +121,15 @@ function startGame(tableId) {
     addAIs(tableId); // AI の追加
     addRoles(tableId); // 役職決め
 
-
+    console.log(tables[tableId].playerBySockets);
+    console.log(tables[tableId].players);
+    for ([socketId, player] of tables[tableId].playerBySockets) {
+        const playerId = player.playerId;
+        const role = tables[tableId].players.get(playerId).role;
+        gameObj.tableSocketsMap.get(tableId).to(socketId).emit('your role', role);
+    }
     gameObj.tableSocketsMap.get(tableId).emit('game start', {});
+    gameObj.tableSocketsMap.get(tableId).emit('players list', getPlayersList(tableId));
 }
 
 function registerEntryRootIo(rootIo){
@@ -117,7 +155,16 @@ function addAIs(tableId) {
 function addRoles(tableId) {
     const numOfPlayers = gameObj.tables[tableId].players.size + gameObj.tables[tableId].AIs.size;
     const rolesArray = createRolesArray(numOfPlayers);
-    console.log({numOfPlayers, rolesArray, players: gameObj.tables[tableId].players, AIs: gameObj.tables[tableId].AIs});
+    for ([socketId, player] of gameObj.tables[tableId].players) {
+        const roleIndex = Math.floor(Math.random() * rolesArray.length);
+        player.role = rolesArray[roleIndex];
+        rolesArray.splice(roleIndex, 1);
+    }
+    for ([aiId, ai] of gameObj.tables[tableId].AIs) {
+        const roleIndex = Math.floor(Math.random() * rolesArray.length);
+        ai.role = rolesArray[roleIndex];
+        rolesArray.splice(roleIndex, 1);
+    }
 }
 
 // 参考 https://ruru-jinro.net/cast.jsp
@@ -145,7 +192,7 @@ function createRolesArray(numOfPlayers) {
     const numOfShares = Math.floor(numOfPlayers / 13) + 1; // 共有者の数;
     const numOfInus = Math.floor(numOfPlayers / 14); // 妖狐の数;
     const numOfHunters = Math.floor(numOfPlayers / 30) + 1; // 狩人の数;
-    const numOfVillager = numOfPlayers - numOfWerewolfs - numOfMadmans - numOfShares - numOfInus - numOfHunters - 2; // 占い師と霊能者の数をひく
+    const numOfVillager = numOfPlayers - numOfWerewolfs - numOfMadmans - numOfShares - numOfInus - numOfHunters - 2; // 占い師と霊能者の数もひく
 
     const rolesArray = [];
     for (let i = 0; i < numOfVillager; i++) {

@@ -1,8 +1,14 @@
 extends layout
 
 block content
-  canvas#mainCanvas.tablePart
-  br
+  table
+    tr
+      td
+        div#roleArea.tablePart
+      td
+        canvas#mainCanvas.tablePart
+      td
+        div#explainArea.tablePart
   div#participants.tablePart
   div#chat
     div#mainChatBox.tablePart
@@ -10,6 +16,6 @@ block content
       div#submitChat
         input#mainChatInput
         button#mainChatButton(value='送信') 送信
-    div#private.tablePart
+    div#privateChatBox.tablePart
   div#dataDiv(data-displayName=`${displayName}`, data-thumbUrl=`${thumbUrl}`, data-twitterId=`${twitterId}`, data-ipAddress=`${ipAddress}`, data-tableId=`${tableId}`)
   script#main(src="/javascripts/table/bundle.js")

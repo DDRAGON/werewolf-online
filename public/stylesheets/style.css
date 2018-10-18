@@ -1,5 +1,5 @@
 body {
-    padding: 1px 50px;
+    padding: 1px 30px;
     font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
     text-align: center;
 }
@@ -25,8 +25,29 @@ span.startTime {
     display: block;
 }
 
-#mainCanvas {
+table {
+    margin-left: auto;
+    margin-right: auto;
+}
 
+#roleArea {
+    width: 160px;
+    height: 160px;
+}
+
+#mainCanvas {
+    width: 560px;
+    height: 160px;
+}
+
+#explainArea {
+    width: 160px;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2em;
+    font-size: 12px;
 }
 
 #participants {
@@ -35,6 +56,9 @@ span.startTime {
     height: 500px;
     text-align: left;
     padding: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #chat {
@@ -72,12 +96,108 @@ span.startTime {
     color: #F6F6F6;
 }
 
-#private {
+#privateChatBox {
     width: 100%;
     height: 156px;
+}
+
+#privateChat {
+    height: calc(100% - 22px);
+    overflow: scroll;
+    text-align: left;
+    padding: 2px;
+}
+
+#submitPrivateChat {
+    height: 22px;
+}
+
+#privateChatInput {
+    float: left;
+    width: calc(100% - 95px);
+    height: 16px;
+}
+
+#privateChatButton {
+    float: left;
+    width: 80px;
+    height: 22px;
+    background-color: #00B7FF;
+    color: #F6F6F6;
 }
 
 .tablePart {
     margin: 0px;
     border: solid 1px #000000;
+}
+
+.villager {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #adff2f;
+    font-size: 60px;
+}
+
+.fortuneTeller{
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #8E68A6;
+    font-size: 60px;
+}
+
+.psychic{
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f5f5f5;
+    font-size: 60px;
+}
+
+.hunter{
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #EB7988;
+    font-size: 60px;
+}
+
+.inu{
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #FFFF99;
+    font-size: 60px;
+}
+
+.madman{
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #542251;
+    font-size: 60px;
+    font-color: #FFFFFF;
+}
+
+.shares {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #00bfff;
+    font-size: 60px;
 }
