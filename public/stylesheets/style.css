@@ -1,6 +1,9 @@
 body {
-    padding: 1px 30px;
-    font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+    padding: 1px 20px;
+    /*font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;*/
+    font-size: 14px;
+    font-family: 游ゴシック体, 'Yu Gothic', YuGothic, 'ヒラギノ角ゴシック Pro', 'Hiragino Kaku Gothic Pro', メイリオ, Meiryo, Osaka, 'ＭＳ Ｐゴシック', 'MS PGothic', sans-serif;
+    line-height: 1.4em;
     text-align: center;
 }
 
@@ -30,6 +33,11 @@ table {
     margin-right: auto;
 }
 
+.tablePart {
+    margin: 0px;
+    border: solid 1px #000000;
+}
+
 #roleArea {
     width: 160px;
     height: 160px;
@@ -50,15 +58,39 @@ table {
     font-size: 12px;
 }
 
-#participants {
+.participants {
     float: left;
     width: 200px;
     height: 500px;
     text-align: left;
     padding: 2px;
+    border-right: outset 0 #ffffff;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    overflow-y: scroll;
+}
+
+.participants div:nth-child(2n) {
+    background-color: white;
+}
+
+.participants div:nth-child(2n+1) {
+    background-color: #f9f9f9;
+}
+
+.participants button:nth-child(2n) {
+    background-color: white;
+}
+
+.participants button:nth-child(2n+1) {
+    background-color: #f1f1f1;
+}
+
+.participants div:nth-child(1) {
+    text-align: center;
+    background-color: black;
+    color: white;
 }
 
 #chat {
@@ -126,9 +158,12 @@ table {
     color: #F6F6F6;
 }
 
-.tablePart {
-    margin: 0px;
-    border: solid 1px #000000;
+div.dead {
+    color: #EEEEEE;
+}
+
+button.voteButton {
+    display: block;
 }
 
 .villager {
@@ -148,7 +183,7 @@ table {
     align-items: center;
     justify-content: center;
     background-color: #8E68A6;
-    font-size: 60px;
+    font-size: 50px;
 }
 
 .psychic{
@@ -158,7 +193,7 @@ table {
     align-items: center;
     justify-content: center;
     background-color: #f5f5f5;
-    font-size: 60px;
+    font-size: 50px;
 }
 
 .hunter{
@@ -189,7 +224,7 @@ table {
     justify-content: center;
     background-color: #542251;
     font-size: 60px;
-    font-color: #FFFFFF;
+    color: #FFFFFF;
 }
 
 .shares {
@@ -199,5 +234,16 @@ table {
     align-items: center;
     justify-content: center;
     background-color: #00bfff;
+    font-size: 50px;
+}
+
+.werewolf{
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #1a1a1a;
     font-size: 60px;
+    color: #FF0000;
 }

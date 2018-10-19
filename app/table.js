@@ -64,15 +64,85 @@ socket.on('your role', (myRole) => {
     displayRole(myRole);
 });
 
+socket.on('game start', (data) => {
+    clientObj.players = new Map(data.playersList);
+    drawPlayersList(clientObj.players);
+    clientObj.day = data.day;
+    clientObj.time = data.time;
+    clientObj.tableState = data.tableState;
+    clientObj.nextEventTime = data.nextEventTime;
+});
+
+socket.on('morning vote start', (data) => {
+    clientObj.players = new Map(data.playersList);
+    drawMorningVotePlayersList(clientObj.players);
+    clientObj.time = data.time;
+    clientObj.nextEventTime = data.nextEventTime;
+    clientObj.voteName = null;
+});
+
 
 function drawPlayersList(players) {
-   $('#participants').empty();
+    $('#participants').empty();
+    $('<div>', {text: '参加者一覧'}).appendTo('#participants');
    for (let [playerId, player] of players) {
+       if (player.isAlive === false) continue;
       $('<div>', {
          id: playerId,
-         text: player.displayName
+         text: player.displayName,
+          class: 'alive'
       }).appendTo('#participants');
    }
+    for (let [playerId, player] of players) {
+        if (player.isAlive === true) continue;
+        $('<div>', {
+            id: playerId,
+            text: player.displayName,
+            class: 'dead'
+        }).appendTo('#participants');
+    }
+}
+
+function drawMorningVotePlayersList(players) {
+    $('#participants').empty();
+    $('<div>', {text: '参加者一覧'}).appendTo('#participants');
+    //$('#chat').css('width', 'calc(100% - 420px)'); // チャットウィンドウを半分の長さにする。
+    //$('<div>', {id:'voteList', class:'participants tablePart', style:'border-left: outset 0 #ffffff;'}).insertAfter('#participants');
+    //$('<div>', {text: '投票先'}).appendTo('#voteList');
+
+    for (let [playerId, player] of players) {
+        if (player.isAlive === false) continue;
+        $('<div>', {id: `${playerId}div`}).appendTo('#participants');
+        $('<button>', {
+            id: playerId,
+            text: player.displayName,
+            class: 'alive voteButton'
+        }).appendTo(`#${playerId}div`);
+        /*
+        $('<span>', {
+            text: '投票先：投票中'
+        }).appendTo(`#${playerId}div`);
+        */
+        $("#" + playerId).click(function(){
+            morningVote(playerId, player.displayName);
+        });
+    }
+    for (let [playerId, player] of players) {
+        if (player.isAlive === true) continue;
+        $('<div>', {
+            id: playerId,
+            text: player.displayName,
+            class: 'dead'
+        }).appendTo('#participants');
+    }
+}
+
+function morningVote(playerId, displayName) {
+    if (clientObj.voteName) return;
+
+    clientObj.voteName = displayName;
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    socket.emit('morning vote', playerId);
 }
 
 function addChat(chatObj) {
@@ -93,8 +163,11 @@ function addChat(chatObj) {
 }
 
 function displayRole(role) {
-   console.log(role);
-   switch (role) {
+    $('#roleArea').empty();
+    $('#explainArea').empty();
+    $('#privateChatBox').empty();
+    $('#submitPrivateChat').empty();
+    switch (role) {
        case '村人':
            $('<div>', {text:'村人', class:'villager'}).appendTo('#roleArea');
            $('#explainArea').html(`あなたは村人です。<br>勝利条件は人狼と妖狐（存在する場合は）を全滅させることです。<br>他の村人達と協力して人狼をあばき出し、処刑しましょう。`);
@@ -116,24 +189,24 @@ function displayRole(role) {
            $('#explainArea').html(`あなたは狂人です。<br>勝利条件は生き残った人間の数よりも、狂人と人狼を合わせた数が同じかそれ以上になると勝利です。<br>能力は特にありませんが、人狼勝利が同時に狂人の勝利でもあります。`);
            break;
        case '共有者':
-           $('#explainArea').html(`あなたは共有者です。<br>勝利条件は人狼と妖狐（存在する場合は）を全滅させることです。<br>共有者同士は常に会話ができます。`);
            $('<div>', {text:'共有者', class:'shares'}).appendTo('#roleArea');
+           $('#explainArea').html(`あなたは共有者です。<br>勝利条件は人狼と妖狐（存在する場合は）を全滅させることです。<br>共有者同士は常に会話ができます。`);
            $('<div>', {id:'privateChat'}).appendTo('#privateChatBox');
            $('<div>', {id:'submitPrivateChat'}).appendTo('#privateChatBox');
            $('<input>', {id:'privateChatInput'}).appendTo('#submitPrivateChat');
            $('<button>', {id:'privateChatButton', text: '送信'}).appendTo('#submitPrivateChat');
            break;
        case '妖狐':
-           $('#explainArea').html(`あなたは妖狐です。<br>勝利条件は、村人または人狼が勝利条件を満たしゲームが終了した時に生き残っていることです。<br>妖狐同士は常に会話ができます。`);
            $('<div>', {text:'妖狐', class:'inu'}).appendTo('#roleArea');
+           $('#explainArea').html(`あなたは妖狐です。<br>勝利条件は、村人または人狼が勝利条件を満たしゲームが終了した時に生き残っていることです。<br>妖狐同士は常に会話ができます。`);
            $('<div>', {id:'privateChat'}).appendTo('#privateChatBox');
            $('<div>', {id:'submitPrivateChat'}).appendTo('#privateChatBox');
            $('<input>', {id:'privateChatInput'}).appendTo('#submitPrivateChat');
            $('<button>', {id:'privateChatButton', text: '送信'}).appendTo('#submitPrivateChat');
            break;
        case '人狼':
-           $('#explainArea').html(`あなたは人狼です。<br>勝利条件は生き残った人間の数よりも、狂人と人狼を合わせた数が同じかそれ以上になると勝利です。<br>夜の間に人を一人指定し殺すことができます。（ただし、妖狐や狩人に守られている人は殺せません）<br>人狼同士は常に会話ができます。`);
            $('<div>', {text:'人狼', class:'werewolf'}).appendTo('#roleArea');
+           $('#explainArea').html(`あなたは人狼です。<br>勝利条件は生き残った人間の数よりも、狂人と人狼を合わせた数が同じかそれ以上になると勝利です。<br>夜の間に人を一人指定し殺すことができます。（ただし、妖狐や狩人に守られている人は殺せません）<br>人狼同士は常に会話ができます。`);
            $('<div>', {id:'privateChat'}).appendTo('#privateChatBox');
            $('<div>', {id:'submitPrivateChat'}).appendTo('#privateChatBox');
            $('<input>', {id:'privateChatInput'}).appendTo('#submitPrivateChat');
@@ -144,10 +217,46 @@ function displayRole(role) {
 
 function displayWaiting(startTime) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.font = "40px 'ＭＳ Ｐゴシック'";
     ctx.fillStyle = "black";
-    ctx.fillText('開始時刻 ' + moment(startTime).tz('Asia/Tokyo').format('HH時:mm分'), 70, 60);
-    ctx.fillText('あと' + calcRemainTime(startTime), 120, 120);
+    const remainTimeText = calcRemainTime(startTime);
+    if (remainTimeText !== '') {
+        ctx.font = "40px 'ＭＳ Ｐゴシック'";
+        ctx.fillText('開始時刻 ' + moment(startTime).tz('Asia/Tokyo').format('HH時:mm分'), 70, 60);
+        ctx.fillText('あと' + calcRemainTime(startTime), 120, 120);
+    } else {
+        ctx.font = "50px 'ＭＳ Ｐゴシック'";
+        ctx.fillText('ゲーム開始', 70, 120);
+    }
+
+}
+
+function displayGaming(day, time, nextEventTime) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const remainTimeText = calcRemainTime(nextEventTime);
+    if (time === 'morning' || time === 'morningVote') {
+        ctx.fillStyle = "lightcyan";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "orangered";
+        ctx.arc( 100, 100, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
+        ctx.fill();
+
+        if (time === 'morning') {
+            ctx.font = "20px 'ＭＳ Ｐゴシック'";
+            ctx.fillStyle = "black";
+            ctx.fillText(`Day ${day}  ${time}  朝会議の残り時間 ${remainTimeText}`, 10, 22);
+        }
+
+        if (time === 'morningVote') {
+            ctx.font = "20px 'ＭＳ Ｐゴシック'";
+            ctx.fillStyle = "black";
+            ctx.fillText(`Day ${day}  ${time}  投票の残り時間 ${remainTimeText}`, 10, 22);
+            if (clientObj.voteName) { // 投票先が決まったなら
+                ctx.font = "32px 'ＭＳ Ｐゴシック'";
+                ctx.fillStyle = "black";
+                ctx.fillText(`「${clientObj.voteName}」に投票`, 10, 120);
+            }
+        }
+    }
 }
 
 function calcRemainTime(distTime) {
@@ -167,6 +276,8 @@ function calcRemainTime(distTime) {
 setInterval(function() {
     if (clientObj.tableState && clientObj.tableState === 'waiting') {
         displayWaiting(clientObj.startTime);
+    } else if (clientObj.tableState && clientObj.tableState === 'gaming') {
+        displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
     }
 
 }, 1000); // タイマー

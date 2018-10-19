@@ -37303,14 +37303,14 @@ var _momentTimezone2 = _interopRequireDefault(_momentTimezone);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var clientObj = {
-   displayName: (0, _jquery2.default)('#dataDiv').attr('data-displayName'),
-   thumbUrl: (0, _jquery2.default)('#dataDiv').attr('data-thumbUrl'),
-   twitterId: (0, _jquery2.default)('#dataDiv').attr('data-twitterId'),
-   ipAddress: (0, _jquery2.default)('#dataDiv').attr('data-ipAddress'),
-   tableId: (0, _jquery2.default)('#dataDiv').attr('data-tableId'),
-   participantsElement: (0, _jquery2.default)('#participants'),
-   players: new Map(),
-   chatAutoScroll: true
+    displayName: (0, _jquery2.default)('#dataDiv').attr('data-displayName'),
+    thumbUrl: (0, _jquery2.default)('#dataDiv').attr('data-thumbUrl'),
+    twitterId: (0, _jquery2.default)('#dataDiv').attr('data-twitterId'),
+    ipAddress: (0, _jquery2.default)('#dataDiv').attr('data-ipAddress'),
+    tableId: (0, _jquery2.default)('#dataDiv').attr('data-tableId'),
+    participantsElement: (0, _jquery2.default)('#participants'),
+    players: new Map(),
+    chatAutoScroll: true
 };
 
 var socketQueryParameters = 'displayName=' + clientObj.displayName + '&thumbUrl=' + clientObj.thumbUrl + '&twitterId=' + clientObj.twitterId;
@@ -37321,197 +37321,393 @@ canvas.height = 160;
 var ctx = canvas.getContext('2d');
 
 (0, _jquery2.default)('#mainChatButton').click(function () {
-   var inputValue = (0, _jquery2.default)('#mainChatInput').val();
-   (0, _jquery2.default)('#mainChatInput').val(''); // 空にする
-   if (inputValue == "") {
-      return;
-   } // 何もしない
+    var inputValue = (0, _jquery2.default)('#mainChatInput').val();
+    (0, _jquery2.default)('#mainChatInput').val(''); // 空にする
+    if (inputValue == "") {
+        return;
+    } // 何もしない
 
-   var escapedSendMessage = (0, _jquery2.default)('<p/>').text(inputValue).html(); // エスケープ
-   socket.emit('chat text', escapedSendMessage);
+    var escapedSendMessage = (0, _jquery2.default)('<p/>').text(inputValue).html(); // エスケープ
+    socket.emit('chat text', escapedSendMessage);
 });
 
 (0, _jquery2.default)('#mainChat').on('scroll', function () {
-   clientObj.chatAutoScroll = false;
-   var scrollHeight = (0, _jquery2.default)('#mainChat').get(0).scrollHeight; // 要素の大きさ
-   var scrollBottom = (0, _jquery2.default)('#mainChat').scrollTop() + (0, _jquery2.default)('#mainChat').innerHeight();
-   if (scrollHeight <= scrollBottom + 5) {
-      clientObj.chatAutoScroll = true;
-   }
+    clientObj.chatAutoScroll = false;
+    var scrollHeight = (0, _jquery2.default)('#mainChat').get(0).scrollHeight; // 要素の大きさ
+    var scrollBottom = (0, _jquery2.default)('#mainChat').scrollTop() + (0, _jquery2.default)('#mainChat').innerHeight();
+    if (scrollHeight <= scrollBottom + 5) {
+        clientObj.chatAutoScroll = true;
+    }
 });
 
 socket.on('start data', function (startObj) {
-   (0, _jquery2.default)('#mainChat').empty();
-   var chats = new Map(startObj.chats);
-   var _iteratorNormalCompletion = true;
-   var _didIteratorError = false;
-   var _iteratorError = undefined;
+    (0, _jquery2.default)('#mainChat').empty();
+    var chats = new Map(startObj.chats);
+    var _iteratorNormalCompletion = true;
+    var _didIteratorError = false;
+    var _iteratorError = undefined;
 
-   try {
-      for (var _iterator = chats[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-         var _ref = _step.value;
+    try {
+        for (var _iterator = chats[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+            var _ref = _step.value;
 
-         var _ref2 = _slicedToArray(_ref, 2),
-             chatId = _ref2[0],
-             chatObj = _ref2[1];
+            var _ref2 = _slicedToArray(_ref, 2),
+                chatId = _ref2[0],
+                chatObj = _ref2[1];
 
-         addChat(chatObj);
-      }
-   } catch (err) {
-      _didIteratorError = true;
-      _iteratorError = err;
-   } finally {
-      try {
-         if (!_iteratorNormalCompletion && _iterator.return) {
-            _iterator.return();
-         }
-      } finally {
-         if (_didIteratorError) {
-            throw _iteratorError;
-         }
-      }
-   }
+            addChat(chatObj);
+        }
+    } catch (err) {
+        _didIteratorError = true;
+        _iteratorError = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion && _iterator.return) {
+                _iterator.return();
+            }
+        } finally {
+            if (_didIteratorError) {
+                throw _iteratorError;
+            }
+        }
+    }
 
-   clientObj.tableState = startObj.tableState;
-   clientObj.startTime = startObj.startTime;
+    clientObj.tableState = startObj.tableState;
+    clientObj.startTime = startObj.startTime;
 });
 
 socket.on('players list', function (playersArray) {
-   clientObj.players = new Map(playersArray);
-   drawPlayersList(clientObj.players);
+    clientObj.players = new Map(playersArray);
+    drawPlayersList(clientObj.players);
 });
 
 socket.on('new chat', function (chatObj) {
-   addChat(chatObj);
+    addChat(chatObj);
 });
 
 socket.on('your role', function (myRole) {
-   clientObj.role = myRole;
-   displayRole(myRole);
+    clientObj.role = myRole;
+    displayRole(myRole);
+});
+
+socket.on('game start', function (data) {
+    clientObj.players = new Map(data.playersList);
+    drawPlayersList(clientObj.players);
+    clientObj.day = data.day;
+    clientObj.time = data.time;
+    clientObj.tableState = data.tableState;
+    clientObj.nextEventTime = data.nextEventTime;
+});
+
+socket.on('morning vote start', function (data) {
+    clientObj.players = new Map(data.playersList);
+    drawMorningVotePlayersList(clientObj.players);
+    clientObj.time = data.time;
+    clientObj.nextEventTime = data.nextEventTime;
+    clientObj.voteName = null;
 });
 
 function drawPlayersList(players) {
-   (0, _jquery2.default)('#participants').empty();
-   var _iteratorNormalCompletion2 = true;
-   var _didIteratorError2 = false;
-   var _iteratorError2 = undefined;
+    (0, _jquery2.default)('#participants').empty();
+    (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
+    var _iteratorNormalCompletion2 = true;
+    var _didIteratorError2 = false;
+    var _iteratorError2 = undefined;
 
-   try {
-      for (var _iterator2 = players[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-         var _ref3 = _step2.value;
+    try {
+        for (var _iterator2 = players[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+            var _ref3 = _step2.value;
 
-         var _ref4 = _slicedToArray(_ref3, 2);
+            var _ref4 = _slicedToArray(_ref3, 2);
 
-         var playerId = _ref4[0];
-         var player = _ref4[1];
+            var playerId = _ref4[0];
+            var player = _ref4[1];
 
-         (0, _jquery2.default)('<div>', {
+            if (player.isAlive === false) continue;
+            (0, _jquery2.default)('<div>', {
+                id: playerId,
+                text: player.displayName,
+                class: 'alive'
+            }).appendTo('#participants');
+        }
+    } catch (err) {
+        _didIteratorError2 = true;
+        _iteratorError2 = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion2 && _iterator2.return) {
+                _iterator2.return();
+            }
+        } finally {
+            if (_didIteratorError2) {
+                throw _iteratorError2;
+            }
+        }
+    }
+
+    var _iteratorNormalCompletion3 = true;
+    var _didIteratorError3 = false;
+    var _iteratorError3 = undefined;
+
+    try {
+        for (var _iterator3 = players[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+            var _ref5 = _step3.value;
+
+            var _ref6 = _slicedToArray(_ref5, 2);
+
+            var _playerId = _ref6[0];
+            var _player = _ref6[1];
+
+            if (_player.isAlive === true) continue;
+            (0, _jquery2.default)('<div>', {
+                id: _playerId,
+                text: _player.displayName,
+                class: 'dead'
+            }).appendTo('#participants');
+        }
+    } catch (err) {
+        _didIteratorError3 = true;
+        _iteratorError3 = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion3 && _iterator3.return) {
+                _iterator3.return();
+            }
+        } finally {
+            if (_didIteratorError3) {
+                throw _iteratorError3;
+            }
+        }
+    }
+}
+
+function drawMorningVotePlayersList(players) {
+    (0, _jquery2.default)('#participants').empty();
+    (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
+    //$('#chat').css('width', 'calc(100% - 420px)'); // チャットウィンドウを半分の長さにする。
+    //$('<div>', {id:'voteList', class:'participants tablePart', style:'border-left: outset 0 #ffffff;'}).insertAfter('#participants');
+    //$('<div>', {text: '投票先'}).appendTo('#voteList');
+
+    var _loop = function _loop(playerId, player) {
+        if (player.isAlive === false) return 'continue';
+        (0, _jquery2.default)('<div>', { id: playerId + 'div' }).appendTo('#participants');
+        (0, _jquery2.default)('<button>', {
             id: playerId,
-            text: player.displayName
-         }).appendTo('#participants');
-      }
-   } catch (err) {
-      _didIteratorError2 = true;
-      _iteratorError2 = err;
-   } finally {
-      try {
-         if (!_iteratorNormalCompletion2 && _iterator2.return) {
-            _iterator2.return();
-         }
-      } finally {
-         if (_didIteratorError2) {
-            throw _iteratorError2;
-         }
-      }
-   }
+            text: player.displayName,
+            class: 'alive voteButton'
+        }).appendTo('#' + playerId + 'div');
+        (0, _jquery2.default)('<span>', {
+            text: '投票先：投票中'
+        }).appendTo('#' + playerId + 'div');
+        (0, _jquery2.default)("#" + playerId).click(function () {
+            morningVote(playerId, player.displayName);
+        });
+        (0, _jquery2.default)('<div>', { text: '投票中' }).appendTo('#voteList');
+    };
+
+    var _iteratorNormalCompletion4 = true;
+    var _didIteratorError4 = false;
+    var _iteratorError4 = undefined;
+
+    try {
+        for (var _iterator4 = players[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+            var _ref7 = _step4.value;
+
+            var _ref8 = _slicedToArray(_ref7, 2);
+
+            var playerId = _ref8[0];
+            var player = _ref8[1];
+
+            var _ret = _loop(playerId, player);
+
+            if (_ret === 'continue') continue;
+        }
+    } catch (err) {
+        _didIteratorError4 = true;
+        _iteratorError4 = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion4 && _iterator4.return) {
+                _iterator4.return();
+            }
+        } finally {
+            if (_didIteratorError4) {
+                throw _iteratorError4;
+            }
+        }
+    }
+
+    var _iteratorNormalCompletion5 = true;
+    var _didIteratorError5 = false;
+    var _iteratorError5 = undefined;
+
+    try {
+        for (var _iterator5 = players[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
+            var _ref9 = _step5.value;
+
+            var _ref10 = _slicedToArray(_ref9, 2);
+
+            var playerId = _ref10[0];
+            var player = _ref10[1];
+
+            if (player.isAlive === true) continue;
+            (0, _jquery2.default)('<div>', {
+                id: playerId,
+                text: player.displayName,
+                class: 'dead'
+            }).appendTo('#participants');
+        }
+    } catch (err) {
+        _didIteratorError5 = true;
+        _iteratorError5 = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion5 && _iterator5.return) {
+                _iterator5.return();
+            }
+        } finally {
+            if (_didIteratorError5) {
+                throw _iteratorError5;
+            }
+        }
+    }
+}
+
+function morningVote(playerId, displayName) {
+    if (clientObj.voteName) return;
+
+    clientObj.voteName = displayName;
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    socket.emit('morning vote', playerId);
 }
 
 function addChat(chatObj) {
-   var addHTML = '\n<p id="' + chatObj.chatId + '">\n   <img src="' + chatObj.thumbUrl + '" align="left">\n   <span>' + chatObj.displayName + '</span>\n   <span>' + chatObj.chatTime + '</span>\n   <br>\n   <span>' + chatObj.chatText + '</span>\n</p>';
+    var addHTML = '\n<p id="' + chatObj.chatId + '">\n   <img src="' + chatObj.thumbUrl + '" align="left">\n   <span>' + chatObj.displayName + '</span>\n   <span>' + chatObj.chatTime + '</span>\n   <br>\n   <span>' + chatObj.chatText + '</span>\n</p>';
 
-   (0, _jquery2.default)('#mainChat').append(addHTML);
+    (0, _jquery2.default)('#mainChat').append(addHTML);
 
-   if (clientObj.chatAutoScroll === true) {
-      (0, _jquery2.default)('#mainChat').scrollTop((0, _jquery2.default)('#mainChat').get(0).scrollHeight);
-   }
+    if (clientObj.chatAutoScroll === true) {
+        (0, _jquery2.default)('#mainChat').scrollTop((0, _jquery2.default)('#mainChat').get(0).scrollHeight);
+    }
 }
 
 function displayRole(role) {
-   console.log(role);
-   switch (role) {
-      case '村人':
-         (0, _jquery2.default)('<div>', { text: '村人', class: 'villager' }).appendTo('#roleArea');
-         (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u6751\u4EBA\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u4EBA\u72FC\u3068\u5996\u72D0\uFF08\u5B58\u5728\u3059\u308B\u5834\u5408\u306F\uFF09\u3092\u5168\u6EC5\u3055\u305B\u308B\u3053\u3068\u3067\u3059\u3002<br>\u4ED6\u306E\u6751\u4EBA\u9054\u3068\u5354\u529B\u3057\u3066\u4EBA\u72FC\u3092\u3042\u3070\u304D\u51FA\u3057\u3001\u51E6\u5211\u3057\u307E\u3057\u3087\u3046\u3002');
-         break;
-      case '占い師':
-         (0, _jquery2.default)('<div>', { text: '占い師', class: 'fortuneTeller' }).appendTo('#roleArea');
-         (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u5360\u3044\u5E2B\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u4EBA\u72FC\u3068\u5996\u72D0\uFF08\u5B58\u5728\u3059\u308B\u5834\u5408\u306F\uFF09\u3092\u5168\u6EC5\u3055\u305B\u308B\u3053\u3068\u3067\u3059\u3002<br>\u591C\u306E\u9593\u306B\u4E00\u4EBA\u3092\u9078\u3093\u3067\u5360\u3046\u3053\u3068\u304C\u3067\u304D\u307E\u3059\u3002\u5996\u72D0\u3092\u5360\u3046\u3068\u305D\u306E\u5996\u72D0\u306F\u6B7B\u306B\u307E\u3059\u3002');
-         break;
-      case '霊能者':
-         (0, _jquery2.default)('<div>', { text: '霊能者', class: 'psychic' }).appendTo('#roleArea');
-         (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u970A\u80FD\u8005\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u4EBA\u72FC\u3068\u5996\u72D0\uFF08\u5B58\u5728\u3059\u308B\u5834\u5408\u306F\uFF09\u3092\u5168\u6EC5\u3055\u305B\u308B\u3053\u3068\u3067\u3059\u3002<br>\u591C\u306E\u9593\u306B\u6628\u65E5\u51E6\u5211\u3055\u308C\u305F\u4EBA\u304C\u4EBA\u9593\u304B\u4EBA\u72FC\u3092\u77E5\u308B\u3053\u3068\u304C\u3067\u304D\u307E\u3059\u3002');
-         break;
-      case '狩人':
-         (0, _jquery2.default)('<div>', { text: '狩人', class: 'hunter' }).appendTo('#roleArea');
-         (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u72E9\u4EBA\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u4EBA\u72FC\u3068\u5996\u72D0\uFF08\u5B58\u5728\u3059\u308B\u5834\u5408\u306F\uFF09\u3092\u5168\u6EC5\u3055\u305B\u308B\u3053\u3068\u3067\u3059\u3002<br>\u591C\u306E\u9593\u306B\u8AB0\u304B\u4E00\u4EBA\u3092\u6307\u540D\u3057\u3001\u72FC\u304B\u3089\u5B88\u308B\u3053\u3068\u304C\u3067\u304D\u307E\u3059\u3002');
-         break;
-      case '狂人':
-         (0, _jquery2.default)('<div>', { text: '狂人', class: 'madman' }).appendTo('#roleArea');
-         (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u72C2\u4EBA\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u751F\u304D\u6B8B\u3063\u305F\u4EBA\u9593\u306E\u6570\u3088\u308A\u3082\u3001\u72C2\u4EBA\u3068\u4EBA\u72FC\u3092\u5408\u308F\u305B\u305F\u6570\u304C\u540C\u3058\u304B\u305D\u308C\u4EE5\u4E0A\u306B\u306A\u308B\u3068\u52DD\u5229\u3067\u3059\u3002<br>\u80FD\u529B\u306F\u7279\u306B\u3042\u308A\u307E\u305B\u3093\u304C\u3001\u4EBA\u72FC\u52DD\u5229\u304C\u540C\u6642\u306B\u72C2\u4EBA\u306E\u52DD\u5229\u3067\u3082\u3042\u308A\u307E\u3059\u3002');
-         break;
-      case '共有者':
-         (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u5171\u6709\u8005\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u4EBA\u72FC\u3068\u5996\u72D0\uFF08\u5B58\u5728\u3059\u308B\u5834\u5408\u306F\uFF09\u3092\u5168\u6EC5\u3055\u305B\u308B\u3053\u3068\u3067\u3059\u3002<br>\u5171\u6709\u8005\u540C\u58EB\u306F\u5E38\u306B\u4F1A\u8A71\u304C\u3067\u304D\u307E\u3059\u3002');
-         (0, _jquery2.default)('<div>', { text: '共有者', class: 'shares' }).appendTo('#roleArea');
-         (0, _jquery2.default)('<div>', { id: 'privateChat' }).appendTo('#privateChatBox');
-         (0, _jquery2.default)('<div>', { id: 'submitPrivateChat' }).appendTo('#privateChatBox');
-         (0, _jquery2.default)('<input>', { id: 'privateChatInput' }).appendTo('#submitPrivateChat');
-         (0, _jquery2.default)('<button>', { id: 'privateChatButton', text: '送信' }).appendTo('#submitPrivateChat');
-         break;
-      case '妖狐':
-         (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u5996\u72D0\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u3001\u6751\u4EBA\u307E\u305F\u306F\u4EBA\u72FC\u304C\u52DD\u5229\u6761\u4EF6\u3092\u6E80\u305F\u3057\u30B2\u30FC\u30E0\u304C\u7D42\u4E86\u3057\u305F\u6642\u306B\u751F\u304D\u6B8B\u3063\u3066\u3044\u308B\u3053\u3068\u3067\u3059\u3002<br>\u5996\u72D0\u540C\u58EB\u306F\u5E38\u306B\u4F1A\u8A71\u304C\u3067\u304D\u307E\u3059\u3002');
-         (0, _jquery2.default)('<div>', { text: '妖狐', class: 'inu' }).appendTo('#roleArea');
-         (0, _jquery2.default)('<div>', { id: 'privateChat' }).appendTo('#privateChatBox');
-         (0, _jquery2.default)('<div>', { id: 'submitPrivateChat' }).appendTo('#privateChatBox');
-         (0, _jquery2.default)('<input>', { id: 'privateChatInput' }).appendTo('#submitPrivateChat');
-         (0, _jquery2.default)('<button>', { id: 'privateChatButton', text: '送信' }).appendTo('#submitPrivateChat');
-         break;
-      case '人狼':
-         (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u4EBA\u72FC\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u751F\u304D\u6B8B\u3063\u305F\u4EBA\u9593\u306E\u6570\u3088\u308A\u3082\u3001\u72C2\u4EBA\u3068\u4EBA\u72FC\u3092\u5408\u308F\u305B\u305F\u6570\u304C\u540C\u3058\u304B\u305D\u308C\u4EE5\u4E0A\u306B\u306A\u308B\u3068\u52DD\u5229\u3067\u3059\u3002<br>\u591C\u306E\u9593\u306B\u4EBA\u3092\u4E00\u4EBA\u6307\u5B9A\u3057\u6BBA\u3059\u3053\u3068\u304C\u3067\u304D\u307E\u3059\u3002\uFF08\u305F\u3060\u3057\u3001\u5996\u72D0\u3084\u72E9\u4EBA\u306B\u5B88\u3089\u308C\u3066\u3044\u308B\u4EBA\u306F\u6BBA\u305B\u307E\u305B\u3093\uFF09<br>\u4EBA\u72FC\u540C\u58EB\u306F\u5E38\u306B\u4F1A\u8A71\u304C\u3067\u304D\u307E\u3059\u3002');
-         (0, _jquery2.default)('<div>', { text: '人狼', class: 'werewolf' }).appendTo('#roleArea');
-         (0, _jquery2.default)('<div>', { id: 'privateChat' }).appendTo('#privateChatBox');
-         (0, _jquery2.default)('<div>', { id: 'submitPrivateChat' }).appendTo('#privateChatBox');
-         (0, _jquery2.default)('<input>', { id: 'privateChatInput' }).appendTo('#submitPrivateChat');
-         (0, _jquery2.default)('<button>', { id: 'privateChatButton', text: '送信' }).appendTo('#submitPrivateChat');
-         break;
-   }
+    (0, _jquery2.default)('#roleArea').empty();
+    (0, _jquery2.default)('#explainArea').empty();
+    (0, _jquery2.default)('#privateChatBox').empty();
+    (0, _jquery2.default)('#submitPrivateChat').empty();
+    switch (role) {
+        case '村人':
+            (0, _jquery2.default)('<div>', { text: '村人', class: 'villager' }).appendTo('#roleArea');
+            (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u6751\u4EBA\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u4EBA\u72FC\u3068\u5996\u72D0\uFF08\u5B58\u5728\u3059\u308B\u5834\u5408\u306F\uFF09\u3092\u5168\u6EC5\u3055\u305B\u308B\u3053\u3068\u3067\u3059\u3002<br>\u4ED6\u306E\u6751\u4EBA\u9054\u3068\u5354\u529B\u3057\u3066\u4EBA\u72FC\u3092\u3042\u3070\u304D\u51FA\u3057\u3001\u51E6\u5211\u3057\u307E\u3057\u3087\u3046\u3002');
+            break;
+        case '占い師':
+            (0, _jquery2.default)('<div>', { text: '占い師', class: 'fortuneTeller' }).appendTo('#roleArea');
+            (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u5360\u3044\u5E2B\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u4EBA\u72FC\u3068\u5996\u72D0\uFF08\u5B58\u5728\u3059\u308B\u5834\u5408\u306F\uFF09\u3092\u5168\u6EC5\u3055\u305B\u308B\u3053\u3068\u3067\u3059\u3002<br>\u591C\u306E\u9593\u306B\u4E00\u4EBA\u3092\u9078\u3093\u3067\u5360\u3046\u3053\u3068\u304C\u3067\u304D\u307E\u3059\u3002\u5996\u72D0\u3092\u5360\u3046\u3068\u305D\u306E\u5996\u72D0\u306F\u6B7B\u306B\u307E\u3059\u3002');
+            break;
+        case '霊能者':
+            (0, _jquery2.default)('<div>', { text: '霊能者', class: 'psychic' }).appendTo('#roleArea');
+            (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u970A\u80FD\u8005\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u4EBA\u72FC\u3068\u5996\u72D0\uFF08\u5B58\u5728\u3059\u308B\u5834\u5408\u306F\uFF09\u3092\u5168\u6EC5\u3055\u305B\u308B\u3053\u3068\u3067\u3059\u3002<br>\u591C\u306E\u9593\u306B\u6628\u65E5\u51E6\u5211\u3055\u308C\u305F\u4EBA\u304C\u4EBA\u9593\u304B\u4EBA\u72FC\u3092\u77E5\u308B\u3053\u3068\u304C\u3067\u304D\u307E\u3059\u3002');
+            break;
+        case '狩人':
+            (0, _jquery2.default)('<div>', { text: '狩人', class: 'hunter' }).appendTo('#roleArea');
+            (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u72E9\u4EBA\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u4EBA\u72FC\u3068\u5996\u72D0\uFF08\u5B58\u5728\u3059\u308B\u5834\u5408\u306F\uFF09\u3092\u5168\u6EC5\u3055\u305B\u308B\u3053\u3068\u3067\u3059\u3002<br>\u591C\u306E\u9593\u306B\u8AB0\u304B\u4E00\u4EBA\u3092\u6307\u540D\u3057\u3001\u72FC\u304B\u3089\u5B88\u308B\u3053\u3068\u304C\u3067\u304D\u307E\u3059\u3002');
+            break;
+        case '狂人':
+            (0, _jquery2.default)('<div>', { text: '狂人', class: 'madman' }).appendTo('#roleArea');
+            (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u72C2\u4EBA\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u751F\u304D\u6B8B\u3063\u305F\u4EBA\u9593\u306E\u6570\u3088\u308A\u3082\u3001\u72C2\u4EBA\u3068\u4EBA\u72FC\u3092\u5408\u308F\u305B\u305F\u6570\u304C\u540C\u3058\u304B\u305D\u308C\u4EE5\u4E0A\u306B\u306A\u308B\u3068\u52DD\u5229\u3067\u3059\u3002<br>\u80FD\u529B\u306F\u7279\u306B\u3042\u308A\u307E\u305B\u3093\u304C\u3001\u4EBA\u72FC\u52DD\u5229\u304C\u540C\u6642\u306B\u72C2\u4EBA\u306E\u52DD\u5229\u3067\u3082\u3042\u308A\u307E\u3059\u3002');
+            break;
+        case '共有者':
+            (0, _jquery2.default)('<div>', { text: '共有者', class: 'shares' }).appendTo('#roleArea');
+            (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u5171\u6709\u8005\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u4EBA\u72FC\u3068\u5996\u72D0\uFF08\u5B58\u5728\u3059\u308B\u5834\u5408\u306F\uFF09\u3092\u5168\u6EC5\u3055\u305B\u308B\u3053\u3068\u3067\u3059\u3002<br>\u5171\u6709\u8005\u540C\u58EB\u306F\u5E38\u306B\u4F1A\u8A71\u304C\u3067\u304D\u307E\u3059\u3002');
+            (0, _jquery2.default)('<div>', { id: 'privateChat' }).appendTo('#privateChatBox');
+            (0, _jquery2.default)('<div>', { id: 'submitPrivateChat' }).appendTo('#privateChatBox');
+            (0, _jquery2.default)('<input>', { id: 'privateChatInput' }).appendTo('#submitPrivateChat');
+            (0, _jquery2.default)('<button>', { id: 'privateChatButton', text: '送信' }).appendTo('#submitPrivateChat');
+            break;
+        case '妖狐':
+            (0, _jquery2.default)('<div>', { text: '妖狐', class: 'inu' }).appendTo('#roleArea');
+            (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u5996\u72D0\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u3001\u6751\u4EBA\u307E\u305F\u306F\u4EBA\u72FC\u304C\u52DD\u5229\u6761\u4EF6\u3092\u6E80\u305F\u3057\u30B2\u30FC\u30E0\u304C\u7D42\u4E86\u3057\u305F\u6642\u306B\u751F\u304D\u6B8B\u3063\u3066\u3044\u308B\u3053\u3068\u3067\u3059\u3002<br>\u5996\u72D0\u540C\u58EB\u306F\u5E38\u306B\u4F1A\u8A71\u304C\u3067\u304D\u307E\u3059\u3002');
+            (0, _jquery2.default)('<div>', { id: 'privateChat' }).appendTo('#privateChatBox');
+            (0, _jquery2.default)('<div>', { id: 'submitPrivateChat' }).appendTo('#privateChatBox');
+            (0, _jquery2.default)('<input>', { id: 'privateChatInput' }).appendTo('#submitPrivateChat');
+            (0, _jquery2.default)('<button>', { id: 'privateChatButton', text: '送信' }).appendTo('#submitPrivateChat');
+            break;
+        case '人狼':
+            (0, _jquery2.default)('<div>', { text: '人狼', class: 'werewolf' }).appendTo('#roleArea');
+            (0, _jquery2.default)('#explainArea').html('\u3042\u306A\u305F\u306F\u4EBA\u72FC\u3067\u3059\u3002<br>\u52DD\u5229\u6761\u4EF6\u306F\u751F\u304D\u6B8B\u3063\u305F\u4EBA\u9593\u306E\u6570\u3088\u308A\u3082\u3001\u72C2\u4EBA\u3068\u4EBA\u72FC\u3092\u5408\u308F\u305B\u305F\u6570\u304C\u540C\u3058\u304B\u305D\u308C\u4EE5\u4E0A\u306B\u306A\u308B\u3068\u52DD\u5229\u3067\u3059\u3002<br>\u591C\u306E\u9593\u306B\u4EBA\u3092\u4E00\u4EBA\u6307\u5B9A\u3057\u6BBA\u3059\u3053\u3068\u304C\u3067\u304D\u307E\u3059\u3002\uFF08\u305F\u3060\u3057\u3001\u5996\u72D0\u3084\u72E9\u4EBA\u306B\u5B88\u3089\u308C\u3066\u3044\u308B\u4EBA\u306F\u6BBA\u305B\u307E\u305B\u3093\uFF09<br>\u4EBA\u72FC\u540C\u58EB\u306F\u5E38\u306B\u4F1A\u8A71\u304C\u3067\u304D\u307E\u3059\u3002');
+            (0, _jquery2.default)('<div>', { id: 'privateChat' }).appendTo('#privateChatBox');
+            (0, _jquery2.default)('<div>', { id: 'submitPrivateChat' }).appendTo('#privateChatBox');
+            (0, _jquery2.default)('<input>', { id: 'privateChatInput' }).appendTo('#submitPrivateChat');
+            (0, _jquery2.default)('<button>', { id: 'privateChatButton', text: '送信' }).appendTo('#submitPrivateChat');
+            break;
+    }
 }
 
 function displayWaiting(startTime) {
-   ctx.clearRect(0, 0, canvas.width, canvas.height);
-   ctx.font = "40px 'ＭＳ Ｐゴシック'";
-   ctx.fillStyle = "black";
-   ctx.fillText('開始時刻 ' + (0, _momentTimezone2.default)(startTime).tz('Asia/Tokyo').format('HH時:mm分'), 70, 60);
-   ctx.fillText('あと' + calcRemainTime(startTime), 120, 120);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "black";
+    var remainTimeText = calcRemainTime(startTime);
+    if (remainTimeText !== '') {
+        ctx.font = "40px 'ＭＳ Ｐゴシック'";
+        ctx.fillText('開始時刻 ' + (0, _momentTimezone2.default)(startTime).tz('Asia/Tokyo').format('HH時:mm分'), 70, 60);
+        ctx.fillText('あと' + calcRemainTime(startTime), 120, 120);
+    } else {
+        ctx.font = "50px 'ＭＳ Ｐゴシック'";
+        ctx.fillText('ゲーム開始', 70, 120);
+    }
+}
+
+function displayGaming(day, time, nextEventTime) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    var remainTimeText = calcRemainTime(nextEventTime);
+    if (time === 'morning' || time === 'morningVote') {
+        ctx.fillStyle = "lightcyan";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "orangered";
+        ctx.arc(100, 100, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
+        ctx.fill();
+
+        if (time === 'morning') {
+            ctx.font = "20px 'ＭＳ Ｐゴシック'";
+            ctx.fillStyle = "black";
+            ctx.fillText('Day ' + day + '  ' + time + '  \u671D\u4F1A\u8B70\u306E\u6B8B\u308A\u6642\u9593 ' + remainTimeText, 10, 22);
+        }
+
+        if (time === 'morningVote') {
+            ctx.font = "20px 'ＭＳ Ｐゴシック'";
+            ctx.fillStyle = "black";
+            ctx.fillText('Day ' + day + '  ' + time + '  \u6295\u7968\u306E\u6B8B\u308A\u6642\u9593 ' + remainTimeText, 10, 22);
+            if (clientObj.voteName) {
+                // 投票先が決まったなら
+                ctx.font = "32px 'ＭＳ Ｐゴシック'";
+                ctx.fillStyle = "black";
+                ctx.fillText('\u300C' + clientObj.voteName + '\u300D\u306B\u6295\u7968', 10, 120);
+            }
+        }
+    }
 }
 
 function calcRemainTime(distTime) {
-   var remainTime = distTime - new Date().getTime();
-   var remainHour = Math.floor(remainTime / (1000 * 60 * 60));
-   var remainMinutes = Math.floor(remainTime % (1000 * 60 * 60) / (1000 * 60));
-   var remainSeconds = Math.floor(remainTime % (1000 * 60) / 1000);
+    var remainTime = distTime - new Date().getTime();
+    var remainHour = Math.floor(remainTime / (1000 * 60 * 60));
+    var remainMinutes = Math.floor(remainTime % (1000 * 60 * 60) / (1000 * 60));
+    var remainSeconds = Math.floor(remainTime % (1000 * 60) / 1000);
 
-   var remainText = '';
-   if (remainHour > 0) remainText += remainHour + '\u6642\u9593';
-   if (remainMinutes > 0) remainText += remainMinutes + '\u5206';
-   if (remainSeconds > 0) remainText += remainSeconds + '\u79D2';
+    var remainText = '';
+    if (remainHour > 0) remainText += remainHour + '\u6642\u9593';
+    if (remainMinutes > 0) remainText += remainMinutes + '\u5206';
+    if (remainSeconds > 0) remainText += remainSeconds + '\u79D2';
 
-   return remainText;
+    return remainText;
 }
 
 setInterval(function () {
-   if (clientObj.tableState && clientObj.tableState === 'waiting') {
-      displayWaiting(clientObj.startTime);
-   }
+    if (clientObj.tableState && clientObj.tableState === 'waiting') {
+        displayWaiting(clientObj.startTime);
+    } else if (clientObj.tableState && clientObj.tableState === 'gaming') {
+        displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    }
 }, 1000); // タイマー
 
 /***/ })

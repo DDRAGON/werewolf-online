@@ -25,20 +25,10 @@ function createTableSocketServer(io, game) {
                rootIo.emit('new chat', chatObj);
            });
 
-       /*
-
-           socket.on('change direction', (direction) => {
-               game.updatePlayerDirection(socket.id, direction);
+           socket.on('morning vote', (playerId) => {
+               game.morningVoted(socket.id, tableId, playerId);
            });
 
-           socket.on('missile emit', (direction) => {
-               game.missileEmit(socket.id, direction);
-           });
-
-           socket.on('disconnect', () => {
-               game.disconnect(socket.id);
-           });
-           */
         });
 
         tableSocketsMap.set(tableId, rootIo);

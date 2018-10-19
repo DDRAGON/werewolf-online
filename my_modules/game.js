@@ -12,15 +12,17 @@ for (let tableId = 1; tableId <= 16; tableId++) {
    };
 
     const dt = new Date();
-    dt.setMinutes(dt.getMinutes() + 1 + (tableId-1)*10);
+    //dt.setMinutes(dt.getMinutes() + 1 + (tableId-1)*10);
+    dt.setSeconds(dt.getSeconds() + 20 + (tableId-1)*10);
     table.startTime = dt.getTime();
 
     setTimeout(function() {startGame(tableId);}, dt.getTime() - new Date().getTime()); // ゲーム開始時刻の設定
-   tables[tableId] = table;
+    tables[tableId] = table;
 }
 
 const gameObj = {
-   tables: tables
+    tables: tables,
+    morningMinutes: 1
 };
 
 
@@ -36,7 +38,8 @@ function newConnection(socketId, tableId, displayName, thumbUrl, twitterId) {
            displayName,
            thumbUrl,
            twitterId,
-           socketId
+           socketId,
+           isAlive: true
        };
 
        table.players.set(playerId, player);
@@ -71,14 +74,16 @@ function getPlayersList(tableId) {
         playersList.set(playerId, {
             playerId,
             displayName: player.displayName,
-            type: 'player'
+            type: 'player',
+            isAlive: player.isAlive
         });
     }
     for ([aiId, ai] of gameObj.tables[tableId].AIs) {
         playersList.set(aiId, {
             aiId,
             displayName: ai.displayName,
-            type: 'AI'
+            type: 'AI',
+            isAlive: ai.isAlive
         });
     }
    return Array.from(playersList);
@@ -114,22 +119,75 @@ function entryConnection() {
 }
 
 function startGame(tableId) {
-    tables[tableId].tableState = 'gaming';
+    const table = tables[tableId];
+    table.tableState = 'gaming';
+    table.day = 1;
+    table.time = 'morning';
     const tablesInfo = entryConnection();
     gameObj.EntryRootIo.emit('tables data', tablesInfo);
 
     addAIs(tableId); // AI の追加
     addRoles(tableId); // 役職決め
 
-    console.log(tables[tableId].playerBySockets);
-    console.log(tables[tableId].players);
     for ([socketId, player] of tables[tableId].playerBySockets) {
         const playerId = player.playerId;
-        const role = tables[tableId].players.get(playerId).role;
+        const role = table.players.get(playerId).role;
         gameObj.tableSocketsMap.get(tableId).to(socketId).emit('your role', role);
     }
-    gameObj.tableSocketsMap.get(tableId).emit('game start', {});
-    gameObj.tableSocketsMap.get(tableId).emit('players list', getPlayersList(tableId));
+
+    const dt = new Date();
+    //dt.setMinutes(dt.getMinutes() + gameObj.morningMinutes); // 朝の時間は５分
+    dt.setSeconds(dt.getSeconds() + 10);
+    table.nextEventTime = dt.getTime();
+
+    gameObj.tableSocketsMap.get(tableId).emit('game start', {
+        tableState: table.tableState,
+        day: table.day,
+        time: table.time,
+        nextEventTime: table.nextEventTime,
+        playersList: getPlayersList(tableId)
+    });
+
+    setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
+}
+
+function changeEvent(tableId) {
+    const table = tables[tableId];
+    if (table.time === 'morning') {
+        table.time = 'morningVote';
+
+        const dt = new Date();
+        // dt.setMinutes(dt.getMinutes() + 1); // 朝の時間は１分
+        dt.setSeconds(dt.getSeconds() + 10);
+        table.nextEventTime = dt.getTime();
+
+        gameObj.tableSocketsMap.get(tableId).emit('morning vote start', {
+            time: table.time,
+            nextEventTime: table.nextEventTime,
+            playersList: getPlayersList(tableId)
+        });
+
+        setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
+    }
+
+    if (table.time === 'morningVote') {
+        table.time = 'morningVoteResult';
+
+        const suspendedPlayer = morningVoteAddingUp(tableId);
+
+        const dt = new Date();
+        dt.setSeconds(dt.getSeconds() + 30); // 投票結果は 30秒だけ表示
+        table.nextEventTime = dt.getTime();
+
+        gameObj.tableSocketsMap.get(tableId).emit('morning vote result', {
+            time: table.time,
+            nextEventTime: table.nextEventTime,
+            playersList: getPlayersList(tableId),
+            suspendedPlayer
+        });
+
+        setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
+    }
 }
 
 function registerEntryRootIo(rootIo){
@@ -140,13 +198,59 @@ function registerTablesRootIo(tableSocketsMap) {
     gameObj.tableSocketsMap = tableSocketsMap;
 }
 
+function morningVoted(socketId, tableId, playerId) {
+    const table = tables[tableId];
+    const sendPlayerId = table.playerBySockets.get(socketId).playerId;
+    const sendPlayer = table.players.get(sendPlayerId);
+    const votedPlayer = table.players.get(playerId);
+
+    if (sendPlayer.votedto) return; // すでに投票している。
+
+    sendPlayer.votedto = {
+        playerId,
+        displayName: votedPlayer.displayName
+    }
+}
+
+function morningVoteAddingUp(tableId) {
+    const table = tables[tableId];
+    const votedPlayers = new Map();
+
+    for ([playerId, player] of table.players) {
+        if (!player.votedto) {
+            // 投票してなかった場合はランダム
+            const randIndex = Math.floor(Math.random * table.players.size);
+            const votedPlayerId = Array.from(table.players)[randIndex][0];
+            const votedPlayer = table.players.get(votedPlayerId);
+            player.votedto = {
+                playerId: votedPlayerId,
+                displayName: votedPlayer.displayName
+            };
+        }
+
+        const votedPlayerId = player.votedto.playerId;
+        if (votedPlayers.has(votedPlayerId)) {
+            const votedPlayer = votedPlayers.get(votedPlayerId);
+            votedPlayer.count += 1;
+        } else {
+            const votedPlayer = {
+                votedPlayerId,
+                displayName: player.votedto.displayName,
+                count: 0
+            };
+            votedPlayers.set(votedPlayerId, votedPlayer);
+        }
+    }
+}
+
 function addAIs(tableId) {
     for(let aiId = 1; aiId <= (10 - gameObj.tables[tableId].players.size); aiId++) {
         const ai = {
             tableId,
             displayName: `AI${aiId}`,
             thumbUrl: null,
-            twitterId: `AI${aiId}`
+            twitterId: `AI${aiId}`,
+            isAlive: true
         };
         tables[tableId].AIs.set(`AI${aiId}`, ai);
     }
@@ -220,11 +324,11 @@ function createRolesArray(numOfPlayers) {
 }
 
 function calcPlayerId(tableId, displayName, twitterId) {
-   return tableId +',' + displayName + ',' + twitterId;
+   return tableId + '' + displayName + '' + twitterId;
 }
 
 function calcChatId(tableId, displayName, chatText, chatTime) {
-   return tableId +',' + displayName + ',' + chatText + ',' + chatTime;
+   return tableId + '' + displayName + '' + chatText + '' + chatTime;
 }
 
 module.exports = {
@@ -233,5 +337,6 @@ module.exports = {
     gotChatText,
     entryConnection,
     registerEntryRootIo,
-    registerTablesRootIo
+    registerTablesRootIo,
+    morningVoted
 };
