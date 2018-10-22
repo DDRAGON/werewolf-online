@@ -25,6 +25,10 @@ function createTableSocketServer(io, game) {
                rootIo.emit('new chat', chatObj);
            });
 
+           socket.on('private chat text', (privateChatText) => {
+               game.gotPrivateChatText(socket.id, tableId, displayName, thumbUrl, privateChatText);
+           });
+
            socket.on('morning vote', (playerId) => {
                game.morningVoted(socket.id, tableId, playerId);
            });

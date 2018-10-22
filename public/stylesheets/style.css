@@ -105,6 +105,7 @@ table {
 }
 
 #mainChat {
+    width: 100%;
     height: calc(100% - 22px);
     overflow: scroll;
     text-align: left;
@@ -134,6 +135,7 @@ table {
 }
 
 #privateChat {
+    width: 100%;
     height: calc(100% - 22px);
     overflow: scroll;
     text-align: left;

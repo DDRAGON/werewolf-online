@@ -8,6 +8,7 @@ for (let tableId = 1; tableId <= 16; tableId++) {
        playerBySockets: new Map(),
        AIs: new Map(),
        chats: new Map(),
+       privateChats: new Map(),
        tableState: 'waiting'
    };
 
@@ -105,6 +106,37 @@ function gotChatText(socketId, tableId, displayName, thumbUrl, chatText) {
    return chatObj;
 }
 
+function gotPrivateChatText(socketId, tableId, displayName, thumbUrl, privateChatText) {
+    console.log({memo: 'in gotPrivateChatText', socketId, tableId, displayName, thumbUrl, privateChatText});
+    const table = gameObj.tables[tableId];
+    const sendPlayerId = table.playerBySockets.get(socketId).playerId;
+    const sendPlayer = table.players.get(sendPlayerId);
+    const sendPlayerRole = sendPlayer.role;
+
+    if (sendPlayerRole === '共有者' || sendPlayerRole === '妖狐' || sendPlayerRole === '人狼') {
+
+        const chatTime = new Date().getTime();
+        const privateChatId = calcPrivateChatId(tableId, displayName, privateChatText, sendPlayerRole, chatTime);
+        const privateChatObj = {
+            privateChatId,
+            privateChatText,
+            displayName,
+            thumbUrl,
+            chatTime
+        };
+        table.privateChats.set(privateChatId, privateChatObj);
+
+        // 同じ役職の人に送信
+        for ([playerId, player] of table.players) {
+            if (player.role === sendPlayerRole) {
+                const socketId = player.socketId;
+                gameObj.tableSocketsMap.get(tableId).to(socketId).emit('new private chat', privateChatObj);
+            }
+        }
+
+    }
+}
+
 function entryConnection() {
     const tablesInfo = [];
     for (let tableId = 1; tableId <= 16; tableId++) {
@@ -153,40 +185,42 @@ function startGame(tableId) {
 
 function changeEvent(tableId) {
     const table = tables[tableId];
-    if (table.time === 'morning') {
-        table.time = 'morningVote';
+    const dt = new Date();
 
-        const dt = new Date();
-        // dt.setMinutes(dt.getMinutes() + 1); // 朝の時間は１分
-        dt.setSeconds(dt.getSeconds() + 10);
-        table.nextEventTime = dt.getTime();
+    switch (table.time) {
+        case 'morning':
+            table.time = 'morningVote';
 
-        gameObj.tableSocketsMap.get(tableId).emit('morning vote start', {
-            time: table.time,
-            nextEventTime: table.nextEventTime,
-            playersList: getPlayersList(tableId)
-        });
+            // dt.setMinutes(dt.getMinutes() + 1); // 朝の時間は１分
+            dt.setSeconds(dt.getSeconds() + 10);
+            table.nextEventTime = dt.getTime();
 
-        setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
-    }
+            gameObj.tableSocketsMap.get(tableId).emit('morning vote start', {
+                time: table.time,
+                nextEventTime: table.nextEventTime,
+                playersList: getPlayersList(tableId)
+            });
 
-    if (table.time === 'morningVote') {
-        table.time = 'morningVoteResult';
+            setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
+            break;
 
-        const suspendedPlayer = morningVoteAddingUp(tableId);
+        case  'morningVote':
+            table.time = 'morningVoteResult';
 
-        const dt = new Date();
-        dt.setSeconds(dt.getSeconds() + 30); // 投票結果は 30秒だけ表示
-        table.nextEventTime = dt.getTime();
+            const suspendedPlayer = morningVoteAddingUp(tableId);
 
-        gameObj.tableSocketsMap.get(tableId).emit('morning vote result', {
-            time: table.time,
-            nextEventTime: table.nextEventTime,
-            playersList: getPlayersList(tableId),
-            suspendedPlayer
-        });
+            dt.setSeconds(dt.getSeconds() + 30); // 投票結果は 30秒だけ表示
+            table.nextEventTime = dt.getTime();
 
-        setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
+            gameObj.tableSocketsMap.get(tableId).emit('morning vote result', {
+                time: table.time,
+                nextEventTime: table.nextEventTime,
+                playersList: getPlayersList(tableId),
+                suspendedPlayer
+            });
+
+            setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
+            break;
     }
 }
 
@@ -219,7 +253,7 @@ function morningVoteAddingUp(tableId) {
     for ([playerId, player] of table.players) {
         if (!player.votedto) {
             // 投票してなかった場合はランダム
-            const randIndex = Math.floor(Math.random * table.players.size);
+            const randIndex = Math.floor(Math.random() * table.players.size);
             const votedPlayerId = Array.from(table.players)[randIndex][0];
             const votedPlayer = table.players.get(votedPlayerId);
             player.votedto = {
@@ -331,10 +365,15 @@ function calcChatId(tableId, displayName, chatText, chatTime) {
    return tableId + '' + displayName + '' + chatText + '' + chatTime;
 }
 
+function calcPrivateChatId(tableId, displayName, privateChatText, sendPlayerRole, chatTime) {
+    return 'P' + tableId + displayName + privateChatText + sendPlayerRole + chatTime;
+}
+
 module.exports = {
     newConnection,
     getPlayersList,
     gotChatText,
+    gotPrivateChatText,
     entryConnection,
     registerEntryRootIo,
     registerTablesRootIo,

@@ -4,14 +4,15 @@ import $ from 'jquery';
 import moment from "moment-timezone";
 
 const clientObj = {
-   displayName: $('#dataDiv').attr('data-displayName'),
-   thumbUrl: $('#dataDiv').attr('data-thumbUrl'),
-   twitterId: $('#dataDiv').attr('data-twitterId'),
-   ipAddress: $('#dataDiv').attr('data-ipAddress'),
-   tableId: $('#dataDiv').attr('data-tableId'),
-   participantsElement: $('#participants'),
-   players: new Map(),
-   chatAutoScroll: true
+    displayName: $('#dataDiv').attr('data-displayName'),
+    thumbUrl: $('#dataDiv').attr('data-thumbUrl'),
+    twitterId: $('#dataDiv').attr('data-twitterId'),
+    ipAddress: $('#dataDiv').attr('data-ipAddress'),
+    tableId: $('#dataDiv').attr('data-tableId'),
+    participantsElement: $('#participants'),
+    players: new Map(),
+    chatAutoScroll: true,
+    privateChatAutoScroll: true,
 };
 
 const socketQueryParameters = `displayName=${clientObj.displayName}&thumbUrl=${clientObj.thumbUrl}&twitterId=${clientObj.twitterId}`;
@@ -39,6 +40,27 @@ $('#mainChat').on('scroll', function(){
    }
 });
 
+function setPrivateChatClick() {
+    $('#privateChatButton').click(function() {
+        const inputValue = $('#privateChatInput').val();
+        $('#privateChatInput').val(''); // 空にする
+        if (inputValue == "") { return; } // 何もしない
+
+        const escapedSendMessage = $('<p/>').text(inputValue).html();// エスケープ
+        socket.emit('private chat text', escapedSendMessage);
+    });
+
+    $('#privateChat').on('scroll', function(){
+        clientObj.privateChatAutoScroll = false;
+        const scrollHeight = $('#privateChat').get(0).scrollHeight; // 要素の大きさ
+        const scrollBottom = $('#privateChat').scrollTop() + $('#privateChat').innerHeight();
+        if (scrollHeight <= (scrollBottom + 5)) {
+            clientObj.privateChatAutoScroll = true;
+        }
+    });
+}
+
+
 socket.on('start data', (startObj) => {
    $('#mainChat').empty();
    const chats = new Map(startObj.chats);
@@ -57,6 +79,10 @@ socket.on('players list', (playersArray) => {
 
 socket.on('new chat', (chatObj) => {
    addChat(chatObj);
+});
+
+socket.on('new private chat', (privateChatObj) => {
+    addPrivateChat(privateChatObj);
 });
 
 socket.on('your role', (myRole) => {
@@ -162,6 +188,23 @@ function addChat(chatObj) {
    }
 }
 
+function addPrivateChat(privateChatObj) {
+    const addHTML = `
+<p id="${privateChatObj.privateChatId}">
+   <img src="${privateChatObj.thumbUrl}" align="left">
+   <span>${privateChatObj.displayName}</span>
+   <span>${privateChatObj.chatTime}</span>
+   <br>
+   <span>${privateChatObj.privateChatText}</span>
+</p>`;
+
+    $('#privateChat').append(addHTML);
+
+    if (clientObj.privateChatAutoScroll === true) {
+        $('#privateChat').scrollTop($('#privateChat').get(0).scrollHeight);
+    }
+}
+
 function displayRole(role) {
     $('#roleArea').empty();
     $('#explainArea').empty();
@@ -195,6 +238,7 @@ function displayRole(role) {
            $('<div>', {id:'submitPrivateChat'}).appendTo('#privateChatBox');
            $('<input>', {id:'privateChatInput'}).appendTo('#submitPrivateChat');
            $('<button>', {id:'privateChatButton', text: '送信'}).appendTo('#submitPrivateChat');
+           setPrivateChatClick();
            break;
        case '妖狐':
            $('<div>', {text:'妖狐', class:'inu'}).appendTo('#roleArea');
@@ -203,6 +247,7 @@ function displayRole(role) {
            $('<div>', {id:'submitPrivateChat'}).appendTo('#privateChatBox');
            $('<input>', {id:'privateChatInput'}).appendTo('#submitPrivateChat');
            $('<button>', {id:'privateChatButton', text: '送信'}).appendTo('#submitPrivateChat');
+           setPrivateChatClick();
            break;
        case '人狼':
            $('<div>', {text:'人狼', class:'werewolf'}).appendTo('#roleArea');
@@ -211,6 +256,7 @@ function displayRole(role) {
            $('<div>', {id:'submitPrivateChat'}).appendTo('#privateChatBox');
            $('<input>', {id:'privateChatInput'}).appendTo('#submitPrivateChat');
            $('<button>', {id:'privateChatButton', text: '送信'}).appendTo('#submitPrivateChat');
+           setPrivateChatClick();
            break;
    }
 }

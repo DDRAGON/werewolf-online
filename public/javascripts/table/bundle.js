@@ -37310,7 +37310,8 @@ var clientObj = {
     tableId: (0, _jquery2.default)('#dataDiv').attr('data-tableId'),
     participantsElement: (0, _jquery2.default)('#participants'),
     players: new Map(),
-    chatAutoScroll: true
+    chatAutoScroll: true,
+    privateChatAutoScroll: true
 };
 
 var socketQueryParameters = 'displayName=' + clientObj.displayName + '&thumbUrl=' + clientObj.thumbUrl + '&twitterId=' + clientObj.twitterId;
@@ -37339,6 +37340,28 @@ var ctx = canvas.getContext('2d');
         clientObj.chatAutoScroll = true;
     }
 });
+
+function setPrivateChatClick() {
+    (0, _jquery2.default)('#privateChatButton').click(function () {
+        var inputValue = (0, _jquery2.default)('#privateChatInput').val();
+        (0, _jquery2.default)('#privateChatInput').val(''); // 空にする
+        if (inputValue == "") {
+            return;
+        } // 何もしない
+
+        var escapedSendMessage = (0, _jquery2.default)('<p/>').text(inputValue).html(); // エスケープ
+        socket.emit('private chat text', escapedSendMessage);
+    });
+
+    (0, _jquery2.default)('#privateChat').on('scroll', function () {
+        clientObj.privateChatAutoScroll = false;
+        var scrollHeight = (0, _jquery2.default)('#privateChat').get(0).scrollHeight; // 要素の大きさ
+        var scrollBottom = (0, _jquery2.default)('#privateChat').scrollTop() + (0, _jquery2.default)('#privateChat').innerHeight();
+        if (scrollHeight <= scrollBottom + 5) {
+            clientObj.privateChatAutoScroll = true;
+        }
+    });
+}
 
 socket.on('start data', function (startObj) {
     (0, _jquery2.default)('#mainChat').empty();
@@ -37383,6 +37406,10 @@ socket.on('players list', function (playersArray) {
 
 socket.on('new chat', function (chatObj) {
     addChat(chatObj);
+});
+
+socket.on('new private chat', function (privateChatObj) {
+    addPrivateChat(privateChatObj);
 });
 
 socket.on('your role', function (myRole) {
@@ -37496,13 +37523,14 @@ function drawMorningVotePlayersList(players) {
             text: player.displayName,
             class: 'alive voteButton'
         }).appendTo('#' + playerId + 'div');
-        (0, _jquery2.default)('<span>', {
+        /*
+        $('<span>', {
             text: '投票先：投票中'
-        }).appendTo('#' + playerId + 'div');
+        }).appendTo(`#${playerId}div`);
+        */
         (0, _jquery2.default)("#" + playerId).click(function () {
             morningVote(playerId, player.displayName);
         });
-        (0, _jquery2.default)('<div>', { text: '投票中' }).appendTo('#voteList');
     };
 
     var _iteratorNormalCompletion4 = true;
@@ -37591,6 +37619,16 @@ function addChat(chatObj) {
     }
 }
 
+function addPrivateChat(privateChatObj) {
+    var addHTML = '\n<p id="' + privateChatObj.privateChatId + '">\n   <img src="' + privateChatObj.thumbUrl + '" align="left">\n   <span>' + privateChatObj.displayName + '</span>\n   <span>' + privateChatObj.chatTime + '</span>\n   <br>\n   <span>' + privateChatObj.privateChatText + '</span>\n</p>';
+
+    (0, _jquery2.default)('#privateChat').append(addHTML);
+
+    if (clientObj.privateChatAutoScroll === true) {
+        (0, _jquery2.default)('#privateChat').scrollTop((0, _jquery2.default)('#privateChat').get(0).scrollHeight);
+    }
+}
+
 function displayRole(role) {
     (0, _jquery2.default)('#roleArea').empty();
     (0, _jquery2.default)('#explainArea').empty();
@@ -37624,6 +37662,7 @@ function displayRole(role) {
             (0, _jquery2.default)('<div>', { id: 'submitPrivateChat' }).appendTo('#privateChatBox');
             (0, _jquery2.default)('<input>', { id: 'privateChatInput' }).appendTo('#submitPrivateChat');
             (0, _jquery2.default)('<button>', { id: 'privateChatButton', text: '送信' }).appendTo('#submitPrivateChat');
+            setPrivateChatClick();
             break;
         case '妖狐':
             (0, _jquery2.default)('<div>', { text: '妖狐', class: 'inu' }).appendTo('#roleArea');
@@ -37632,6 +37671,7 @@ function displayRole(role) {
             (0, _jquery2.default)('<div>', { id: 'submitPrivateChat' }).appendTo('#privateChatBox');
             (0, _jquery2.default)('<input>', { id: 'privateChatInput' }).appendTo('#submitPrivateChat');
             (0, _jquery2.default)('<button>', { id: 'privateChatButton', text: '送信' }).appendTo('#submitPrivateChat');
+            setPrivateChatClick();
             break;
         case '人狼':
             (0, _jquery2.default)('<div>', { text: '人狼', class: 'werewolf' }).appendTo('#roleArea');
@@ -37640,6 +37680,7 @@ function displayRole(role) {
             (0, _jquery2.default)('<div>', { id: 'submitPrivateChat' }).appendTo('#privateChatBox');
             (0, _jquery2.default)('<input>', { id: 'privateChatInput' }).appendTo('#submitPrivateChat');
             (0, _jquery2.default)('<button>', { id: 'privateChatButton', text: '送信' }).appendTo('#submitPrivateChat');
+            setPrivateChatClick();
             break;
     }
 }
