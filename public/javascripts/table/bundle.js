@@ -37434,6 +37434,15 @@ socket.on('morning vote start', function (data) {
     clientObj.voteName = null;
 });
 
+socket.on('morning vote result', function (data) {
+    clientObj.time = data.time;
+    clientObj.nextEventTime = data.nextEventTime;
+    clientObj.players = new Map(data.playersList);
+    clientObj.suspendedPlayers = new Map(data.suspendedPlayers);
+    drawPlayersListWithVote(clientObj.players);
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+});
+
 function drawPlayersList(players) {
     (0, _jquery2.default)('#participants').empty();
     (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
@@ -37508,31 +37517,9 @@ function drawPlayersList(players) {
     }
 }
 
-function drawMorningVotePlayersList(players) {
+function drawPlayersListWithVote(players) {
     (0, _jquery2.default)('#participants').empty();
     (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
-    //$('#chat').css('width', 'calc(100% - 420px)'); // チャットウィンドウを半分の長さにする。
-    //$('<div>', {id:'voteList', class:'participants tablePart', style:'border-left: outset 0 #ffffff;'}).insertAfter('#participants');
-    //$('<div>', {text: '投票先'}).appendTo('#voteList');
-
-    var _loop = function _loop(playerId, player) {
-        if (player.isAlive === false) return 'continue';
-        (0, _jquery2.default)('<div>', { id: playerId + 'div' }).appendTo('#participants');
-        (0, _jquery2.default)('<button>', {
-            id: playerId,
-            text: player.displayName,
-            class: 'alive voteButton'
-        }).appendTo('#' + playerId + 'div');
-        /*
-        $('<span>', {
-            text: '投票先：投票中'
-        }).appendTo(`#${playerId}div`);
-        */
-        (0, _jquery2.default)("#" + playerId).click(function () {
-            morningVote(playerId, player.displayName);
-        });
-    };
-
     var _iteratorNormalCompletion4 = true;
     var _didIteratorError4 = false;
     var _iteratorError4 = undefined;
@@ -37546,9 +37533,21 @@ function drawMorningVotePlayersList(players) {
             var playerId = _ref8[0];
             var player = _ref8[1];
 
-            var _ret = _loop(playerId, player);
-
-            if (_ret === 'continue') continue;
+            if (player.isAlive === false) continue;
+            (0, _jquery2.default)('<div>', {
+                id: playerId,
+                text: player.displayName,
+                class: 'alive'
+            }).appendTo('#participants');
+            if (player.votedto.voteMethod === 'random') {
+                (0, _jquery2.default)('<span>', {
+                    text: ' -> ' + player.votedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09'
+                }).appendTo('#' + playerId);
+            } else {
+                (0, _jquery2.default)('<span>', {
+                    text: ' -> ' + player.votedto.displayName
+                }).appendTo('#' + playerId);
+            }
         }
     } catch (err) {
         _didIteratorError4 = true;
@@ -37575,13 +37574,13 @@ function drawMorningVotePlayersList(players) {
 
             var _ref10 = _slicedToArray(_ref9, 2);
 
-            var playerId = _ref10[0];
-            var player = _ref10[1];
+            var _playerId2 = _ref10[0];
+            var _player2 = _ref10[1];
 
-            if (player.isAlive === true) continue;
+            if (_player2.isAlive === true) continue;
             (0, _jquery2.default)('<div>', {
-                id: playerId,
-                text: player.displayName,
+                id: _playerId2,
+                text: _player2.displayName,
                 class: 'dead'
             }).appendTo('#participants');
         }
@@ -37601,13 +37600,106 @@ function drawMorningVotePlayersList(players) {
     }
 }
 
+function drawMorningVotePlayersList(players) {
+    (0, _jquery2.default)('#participants').empty();
+    (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
+
+    var _loop = function _loop(playerId, player) {
+        if (player.isAlive === false) return 'continue';
+        (0, _jquery2.default)('<div>', { id: playerId + 'div' }).appendTo('#participants');
+        (0, _jquery2.default)('<button>', {
+            id: playerId,
+            text: player.displayName,
+            class: 'alive voteButton'
+        }).appendTo('#' + playerId + 'div');
+        /*
+        $('<span>', {
+            text: '投票先：投票中'
+        }).appendTo(`#${playerId}div`);
+        */
+        (0, _jquery2.default)("#" + playerId).click(function () {
+            morningVote(playerId, player.displayName);
+        });
+    };
+
+    var _iteratorNormalCompletion6 = true;
+    var _didIteratorError6 = false;
+    var _iteratorError6 = undefined;
+
+    try {
+        for (var _iterator6 = players[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
+            var _ref11 = _step6.value;
+
+            var _ref12 = _slicedToArray(_ref11, 2);
+
+            var playerId = _ref12[0];
+            var player = _ref12[1];
+
+            var _ret = _loop(playerId, player);
+
+            if (_ret === 'continue') continue;
+        }
+    } catch (err) {
+        _didIteratorError6 = true;
+        _iteratorError6 = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion6 && _iterator6.return) {
+                _iterator6.return();
+            }
+        } finally {
+            if (_didIteratorError6) {
+                throw _iteratorError6;
+            }
+        }
+    }
+
+    var _iteratorNormalCompletion7 = true;
+    var _didIteratorError7 = false;
+    var _iteratorError7 = undefined;
+
+    try {
+        for (var _iterator7 = players[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
+            var _ref13 = _step7.value;
+
+            var _ref14 = _slicedToArray(_ref13, 2);
+
+            var playerId = _ref14[0];
+            var player = _ref14[1];
+
+            if (player.isAlive === true) continue;
+            (0, _jquery2.default)('<div>', {
+                id: playerId,
+                text: player.displayName,
+                class: 'dead'
+            }).appendTo('#participants');
+        }
+    } catch (err) {
+        _didIteratorError7 = true;
+        _iteratorError7 = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion7 && _iterator7.return) {
+                _iterator7.return();
+            }
+        } finally {
+            if (_didIteratorError7) {
+                throw _iteratorError7;
+            }
+        }
+    }
+}
+
 function morningVote(playerId, displayName) {
     if (clientObj.voteName) return;
 
+    drawPlayersList(clientObj.players); // プレーヤー名の表示を元に戻す
     clientObj.voteName = displayName;
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
     socket.emit('morning vote', playerId);
 }
+
+function drawVoteResult(time, suspendedPlayers) {}
 
 function addChat(chatObj) {
     var addHTML = '\n<p id="' + chatObj.chatId + '">\n   <img src="' + chatObj.thumbUrl + '" align="left">\n   <span>' + chatObj.displayName + '</span>\n   <span>' + chatObj.chatTime + '</span>\n   <br>\n   <span>' + chatObj.chatText + '</span>\n</p>';
@@ -37702,30 +37794,74 @@ function displayWaiting(startTime) {
 function displayGaming(day, time, nextEventTime) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     var remainTimeText = calcRemainTime(nextEventTime);
-    if (time === 'morning' || time === 'morningVote') {
+    if (time === 'morning' || time === 'morningVote' || time === 'morningVoteResult' || time === 'morningVoteResultAndNextIsRunoffElection') {
         ctx.fillStyle = "lightcyan";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "orangered";
         ctx.arc(100, 100, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
         ctx.fill();
+    }
 
-        if (time === 'morning') {
-            ctx.font = "20px 'ＭＳ Ｐゴシック'";
+    if (time === 'morning') {
+        ctx.font = "20px 'ＭＳ Ｐゴシック'";
+        ctx.fillStyle = "black";
+        ctx.fillText('Day ' + day + '  ' + time + '  \u671D\u4F1A\u8B70\u306E\u6B8B\u308A\u6642\u9593 ' + remainTimeText, 10, 22);
+    }
+
+    if (time === 'morningVote') {
+        ctx.font = "20px 'ＭＳ Ｐゴシック'";
+        ctx.fillStyle = "black";
+        ctx.fillText('Day ' + day + '  ' + time + '  \u6295\u7968\u306E\u6B8B\u308A\u6642\u9593 ' + remainTimeText, 10, 22);
+        if (clientObj.voteName) {
+            // 投票先が決まったなら
+            ctx.font = "32px 'ＭＳ Ｐゴシック'";
             ctx.fillStyle = "black";
-            ctx.fillText('Day ' + day + '  ' + time + '  \u671D\u4F1A\u8B70\u306E\u6B8B\u308A\u6642\u9593 ' + remainTimeText, 10, 22);
+            ctx.fillText('\u300C' + clientObj.voteName + '\u300D\u306B\u6295\u7968', 10, 120);
         }
+    }
 
-        if (time === 'morningVote') {
-            ctx.font = "20px 'ＭＳ Ｐゴシック'";
-            ctx.fillStyle = "black";
-            ctx.fillText('Day ' + day + '  ' + time + '  \u6295\u7968\u306E\u6B8B\u308A\u6642\u9593 ' + remainTimeText, 10, 22);
-            if (clientObj.voteName) {
-                // 投票先が決まったなら
-                ctx.font = "32px 'ＭＳ Ｐゴシック'";
+    if (time === 'morningVoteResult') {
+        ctx.font = "20px 'ＭＳ Ｐゴシック'";
+        ctx.fillStyle = "black";
+        ctx.fillText('Day ' + day + '  ' + time + '  \u7D50\u679C\u767A\u8868 ' + remainTimeText, 10, 22);
+        var _iteratorNormalCompletion8 = true;
+        var _didIteratorError8 = false;
+        var _iteratorError8 = undefined;
+
+        try {
+            for (var _iterator8 = clientObj.suspendedPlayers[Symbol.iterator](), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
+                var _ref15 = _step8.value;
+
+                var _ref16 = _slicedToArray(_ref15, 2),
+                    playerId = _ref16[0],
+                    votedPlayer = _ref16[1];
+
+                ctx.font = "18px 'ＭＳ Ｐゴシック'";
                 ctx.fillStyle = "black";
-                ctx.fillText('\u300C' + clientObj.voteName + '\u300D\u306B\u6295\u7968', 10, 120);
+                ctx.fillText(votedPlayer.displayName + ' \u3055\u3093\u306E\u51E6\u5211\u304C\u6C7A\u5B9A\u3044\u305F\u3057\u307E\u3057\u305F\u3002', 10, 120);
+            }
+        } catch (err) {
+            _didIteratorError8 = true;
+            _iteratorError8 = err;
+        } finally {
+            try {
+                if (!_iteratorNormalCompletion8 && _iterator8.return) {
+                    _iterator8.return();
+                }
+            } finally {
+                if (_didIteratorError8) {
+                    throw _iteratorError8;
+                }
             }
         }
+    }
+
+    if (time === 'morningVoteResultAndNextIsRunoffElection') {
+        ctx.font = "20px 'ＭＳ Ｐゴシック'";
+        ctx.fillStyle = "black";
+        ctx.fillText('Day ' + day + '  ' + time + '  \u7D50\u679C\u767A\u8868 ' + remainTimeText, 10, 22);
+        ctx.font = "18px 'ＭＳ Ｐゴシック'";
+        ctx.fillText('\u7968\u304C\u591A\u304B\u3063\u305F ' + clientObj.suspendedPlayers.size + ' \u540D\u3067\u6C7A\u9078\u6295\u7968\u3092\u884C\u3044\u307E\u3059\u3002', 10, 120);
     }
 }
 

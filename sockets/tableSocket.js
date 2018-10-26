@@ -33,6 +33,10 @@ function createTableSocketServer(io, game) {
                game.morningVoted(socket.id, tableId, playerId);
            });
 
+           socket.on('runoff election vote', (suspendedPlayerId) => {
+               game.runoffElectionVoted(socket.id, tableId, suspendedPlayerId);
+           });
+
         });
 
         tableSocketsMap.set(tableId, rootIo);
