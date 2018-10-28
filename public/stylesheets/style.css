@@ -28,6 +28,10 @@ span.startTime {
     display: block;
 }
 
+span.voteSpan {
+    display: block;
+}
+
 table {
     margin-left: auto;
     margin-right: auto;
@@ -76,7 +80,7 @@ table {
 }
 
 .participants div:nth-child(2n+1) {
-    background-color: #f6f6f6;
+    background-color: #f3f3f3;
 }
 
 .participants button:nth-child(2n) {
@@ -161,7 +165,7 @@ table {
 }
 
 div.dead {
-    color: #EEEEEE;
+    color: #aaaaaa;
 }
 
 button.voteButton {

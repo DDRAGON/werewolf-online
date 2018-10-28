@@ -127,6 +127,15 @@ socket.on('runoff election start', (data) => {
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
 });
 
+socket.on('runoff election result', (data) => {
+    clientObj.time = data.time;
+    clientObj.nextEventTime = data.nextEventTime;
+    clientObj.players = new Map(data.playersList);
+    clientObj.suspendedPlayers = new Map(data.suspendedPlayers);
+    drawPlayersListWithVote(clientObj.players);
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+});
+
 
 function drawPlayersList(players) {
     $('#participants').empty();
@@ -153,7 +162,7 @@ function drawPlayersListWithVote(players) {
     $('#participants').empty();
     $('<div>', {text: '参加者一覧'}).appendTo('#participants');
     for (let [playerId, player] of players) {
-        if (player.isAlive === false) contiue;
+        if (player.isAlive === false) continue;
         $('<div>', {
             id: playerId,
             text: player.displayName,
@@ -161,21 +170,62 @@ function drawPlayersListWithVote(players) {
         }).appendTo('#participants');
         if (player.votedto.voteMethod === 'random') {
             $('<span>', {
-                text: ` → ${player.votedto.displayName}（ランダム）`
+                text: `　投票先: ${player.votedto.displayName}（ランダム）`,
+                class: 'voteSpan'
             }).appendTo(`#${playerId}`);
         } else {
             $('<span>', {
-                text: ` → ${player.votedto.displayName}`
+                text: `　投票先: ${player.votedto.displayName}`,
+                class: 'voteSpan'
             }).appendTo(`#${playerId}`);
+        }
+        if (player.runoffElectionVotedto) {
+            if (player.runoffElectionVotedto.voteMethod === 'random') {
+                $('<span>', {
+                    text: `　決選投票: ${player.runoffElectionVotedto.displayName}（ランダム）`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            } else {
+                $('<span>', {
+                    text: `　決選投票: ${player.runoffElectionVotedto.displayName}`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            }
         }
     }
     for (let [playerId, player] of players) {
         if (player.isAlive === true) continue;
         $('<div>', {
             id: playerId,
-            text: player.displayName,
+            text: `💀 ${player.displayName}`,
             class: 'dead'
         }).appendTo('#participants');
+        if (player.votedto) {
+            if (player.votedto.voteMethod === 'random') {
+                $('<span>', {
+                    text: `　投票先: ${player.votedto.displayName}（ランダム）`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            } else {
+                $('<span>', {
+                    text: `　投票先: ${player.votedto.displayName}`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            }
+        }
+        if (player.runoffElectionVotedto) {
+            if (player.runoffElectionVotedto.voteMethod === 'random') {
+                $('<span>', {
+                    text: `　決選投票: ${player.runoffElectionVotedto.displayName}（ランダム）`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            } else {
+                $('<span>', {
+                    text: `　決選投票: ${player.runoffElectionVotedto.displayName}`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            }
+        }
     }
 }
 
@@ -373,7 +423,8 @@ function displayGaming(day, time, nextEventTime) {
         time === 'morningVote' ||
         time === 'morningVoteResult' ||
         time === 'morningVoteResultAndNextIsRunoffElection' ||
-        time === 'runoffElection'
+        time === 'runoffElection' ||
+        time === 'runoffElectionResult'
     ) {
         ctx.fillStyle = "lightcyan";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -426,6 +477,17 @@ function displayGaming(day, time, nextEventTime) {
             ctx.font = "32px 'ＭＳ Ｐゴシック'";
             ctx.fillStyle = "black";
             ctx.fillText(`「${clientObj.runoffElectionVoteName}」に投票`, 10, 120);
+        }
+    }
+
+    if (time === 'runoffElectionResult') {
+        ctx.font = "20px 'ＭＳ Ｐゴシック'";
+        ctx.fillStyle = "black";
+        ctx.fillText(`Day ${day}  ${time}  結果発表 ${remainTimeText}`, 10, 22);
+        for ([playerId, votedPlayer] of clientObj.suspendedPlayers) {
+            ctx.font = "18px 'ＭＳ Ｐゴシック'";
+            ctx.fillStyle = "black";
+            ctx.fillText(`${votedPlayer.displayName} さんの処刑が決定いたしました。`, 10, 120);
         }
     }
 }

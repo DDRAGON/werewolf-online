@@ -77,7 +77,8 @@ function getPlayersList(tableId) {
             displayName: player.displayName,
             type: 'player',
             isAlive: player.isAlive,
-            votedto: player.votedto
+            votedto: player.votedto,
+            runoffElectionVotedto: player.runoffElectionVotedto
         });
     }
     for ([aiId, ai] of gameObj.tables[tableId].AIs) {
@@ -86,7 +87,8 @@ function getPlayersList(tableId) {
             displayName: ai.displayName,
             type: 'AI',
             isAlive: ai.isAlive,
-            votedto: ai.votedto
+            votedto: ai.votedto,
+            runoffElectionVotedto: ai.runoffElectionVotedto
         });
     }
    return Array.from(playersList);
@@ -188,6 +190,7 @@ function startGame(tableId) {
 function changeEvent(tableId) {
     const table = tables[tableId];
     const dt = new Date();
+    let suspendedPlayersMap = new Map();
 
     switch (table.time) {
         case 'morning':
@@ -209,17 +212,18 @@ function changeEvent(tableId) {
             break;
 
         case 'morningVote':
-            const suspendedPlayers = morningVoteAddingUp(tableId);
-            table.suspendedPlayers = suspendedPlayers;
+            const playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
+            suspendedPlayersMap = voteAddingUp(tableId, playersAndAIsMap);
+            table.suspendedPlayers = suspendedPlayersMap;
 
-            if (suspendedPlayers.size === 1) {
+            if (suspendedPlayersMap.size === 1) {
                 table.time = 'morningVoteResult';
-                suspendPlayer(tableId, suspendedPlayers);
-            } else if (suspendedPlayers.size > 1) {
+                suspendPlayer(tableId, suspendedPlayersMap);
+            } else if (suspendedPlayersMap.size > 1) {
                 table.time = 'morningVoteResultAndNextIsRunoffElection';
             }
 
-            dt.setSeconds(dt.getSeconds() + 30); // 投票結果は 30秒だけ表示
+            dt.setSeconds(dt.getSeconds() + 10); // 投票結果は 10秒だけ表示
             table.nextEventTime = dt.getTime();
 
             gameObj.tableSocketsMap.get(tableId).emit('morning vote result', {
@@ -227,7 +231,7 @@ function changeEvent(tableId) {
                 nextEventTime: table.nextEventTime,
                 playersList: getPlayersList(tableId),
                 aisList: getPlayersList(tableId),
-                suspendedPlayers: Array.from(suspendedPlayers)
+                suspendedPlayers: Array.from(suspendedPlayersMap)
             });
 
             setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
@@ -250,17 +254,31 @@ function changeEvent(tableId) {
                 time: table.time,
                 nextEventTime: table.nextEventTime,
                 playersList: getPlayersList(tableId),
-                suspendedPlayers: Array.from(suspendedPlayers)
+                suspendedPlayers: Array.from(table.suspendedPlayers)
             });
 
             setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
             break;
 
         case 'runoffElection':
-            table.time = 'runoffElectionResult';
-            const suspendedPlayers = morningVoteAddingUp(tableId);
-            table.suspendedPlayers = suspendedPlayers;
-            break;
+           suspendedPlayersMap = voteAddingUp(tableId, table.suspendedPlayers);
+           table.suspendedPlayers = suspendedPlayersMap;
+           suspendPlayer(tableId, suspendedPlayersMap); // 決戦投票は何が何でも一人吊る
+
+           table.time = 'runoffElectionResult';
+
+           dt.setSeconds(dt.getSeconds() + 10); // 投票結果は 30秒だけ表示
+           table.nextEventTime = dt.getTime();
+
+           gameObj.tableSocketsMap.get(tableId).emit('runoff election result', {
+              time: table.time,
+              nextEventTime: table.nextEventTime,
+              playersList: getPlayersList(tableId),
+              suspendedPlayers: Array.from(suspendedPlayersMap)
+           });
+
+           setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
+           break;
 
         case 'runoffElectionResult':
             table.time = 'night';
@@ -328,7 +346,7 @@ function runoffElectionVoted(socketId, tableId, playerId) {
     }
 }
 
-function morningVoteAddingUp(tableId) {
+function voteAddingUp(tableId, candidatesMap) {
     const table = tables[tableId];
     const playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
     const votedPlayers = new Map();
@@ -336,11 +354,12 @@ function morningVoteAddingUp(tableId) {
     let mostVotedPlayers = new Map();
 
     for ([playerId, player] of playersAndAIsMap) {
-        if (!player.votedto) {
+
+        if (table.time === 'morningVote' && !player.votedto) {
             // 投票してなかった場合はランダム
-            const randIndex = Math.floor(Math.random() * playersAndAIsMap.size);
-            const votedPlayerId = Array.from(playersAndAIsMap)[randIndex][0];
-            const votedPlayer = playersAndAIsMap.get(votedPlayerId);
+            const randIndex = Math.floor(Math.random() * candidatesMap.size);
+            const votedPlayerId = Array.from(candidatesMap)[randIndex][0];
+            const votedPlayer = candidatesMap.get(votedPlayerId);
             player.votedto = {
                 playerId: votedPlayerId,
                 displayName: votedPlayer.displayName,
@@ -348,17 +367,46 @@ function morningVoteAddingUp(tableId) {
             };
         }
 
-        const votedPlayerId = player.votedto.playerId;
-        if (votedPlayers.has(votedPlayerId)) {
-            const votedPlayer = votedPlayers.get(votedPlayerId);
-            votedPlayer.count += 1;
-        } else {
-            const votedPlayer = {
-                votedPlayerId,
-                displayName: player.votedto.displayName,
-                count: 1
-            };
-            votedPlayers.set(votedPlayerId, votedPlayer);
+        if (table.time === 'runoffElection' && !player.runoffElectionVotedto) {
+           // 投票してなかった場合はランダム
+           const randIndex = Math.floor(Math.random() * candidatesMap.size);
+           const votedPlayerId = Array.from(candidatesMap)[randIndex][0];
+           const votedPlayer = candidatesMap.get(votedPlayerId);
+           player.runoffElectionVotedto = {
+               playerId: votedPlayerId,
+               displayName: votedPlayer.displayName,
+               voteMethod: 'random'
+           };
+        }
+
+        let votedPlayerId;
+        if (table.time === 'morningVote') {
+           votedPlayerId = player.votedto.playerId;
+           if (votedPlayers.has(votedPlayerId)) {
+              const votedPlayer = votedPlayers.get(votedPlayerId);
+              votedPlayer.count += 1;
+           } else {
+              const votedPlayer = {
+                 votedPlayerId,
+                 displayName: player.votedto.displayName,
+                 count: 1
+              };
+              votedPlayers.set(votedPlayerId, votedPlayer);
+           }
+        }
+        if (table.time === 'runoffElection') {
+           votedPlayerId = player.runoffElectionVotedto.playerId;
+           if (votedPlayers.has(votedPlayerId)) {
+              const votedPlayer = votedPlayers.get(votedPlayerId);
+              votedPlayer.count += 1;
+           } else {
+              const votedPlayer = {
+                 votedPlayerId,
+                 displayName: player.runoffElectionVotedto.displayName,
+                 count: 1
+              };
+              votedPlayers.set(votedPlayerId, votedPlayer);
+           }
         }
 
         const votedPlayer = votedPlayers.get(votedPlayerId);
@@ -370,15 +418,26 @@ function morningVoteAddingUp(tableId) {
             mostVotedPlayers.set(votedPlayerId, votedPlayer);
         }
     }
+
+    if (table.time === 'runoffElection') {
+        if (mostVotedPlayers.size > 1) {
+            // 決戦投票で複数人候補者がいた場合はランダムで吊る
+            const randIndex = Math.floor(Math.random() * mostVotedPlayers.size);
+            const suspendPlayerId = Array.from(mostVotedPlayers)[randIndex][0];
+            const psuspendPlayer = playersAndAIsMap.get(suspendPlayerId);
+            mostVotedPlayers = new Map();
+            mostVotedPlayers.set(suspendPlayerId, psuspendPlayer);
+        }
+    }
     return mostVotedPlayers;
 }
 
-function suspendPlayer(tableId, suspendedPlayers) {
+function suspendPlayer(tableId, suspendedPlayersMap) {
     const table = tables[tableId];
     const playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
-    for ([suspendedPlayerId, suspendedPlayer] of suspendedPlayers) {
-        const player = playersAndAIsMap.get(suspendedPlayerId);
-        player.isAlive = false;
+
+    for ([suspendedPlayerId, suspendedPlayer] of suspendedPlayersMap) {
+        playersAndAIsMap.get(suspendedPlayerId).isAlive = false;
     }
 }
 
