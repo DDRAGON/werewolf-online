@@ -278,7 +278,39 @@ function drawPlayersListWithVoteAndGoast(players, deadPlayersColorMap) {
 }
 
 function drawPlayersListWithVoteAndWerewolf(players, playersWithoutWerewolfMap) {
+    $('#participants').empty();
+    $('<div>', {text: '参加者一覧'}).appendTo('#participants');
 
+    for (let [playerId, player] of playersWithoutWerewolfMap) {
+        $('<div>', {id: `${playerId}div`}).appendTo('#participants');
+        $('<button>', {
+            id: playerId,
+            text: player.displayName,
+            class: 'alive voteButton'
+        }).appendTo(`#${playerId}div`);
+        $("#" + playerId).click(function(){
+            werewolfVote(playerId, player.displayName);
+        });
+    }
+
+    for (let [playerId, player] of players) {
+        if (player.isAlive === false) continue;
+        if (playersWithoutWerewolfMap.has(playerId)) continue;
+
+        $('<div>', {
+            id: playerId,
+            text: player.displayName,
+            class: 'alive'
+        }).appendTo('#participants');
+    }
+    for (let [playerId, player] of players) {
+        if (player.isAlive === true) continue;
+        $('<div>', {
+            id: playerId,
+            text: player.displayName,
+            class: 'dead'
+        }).appendTo('#participants');
+    }
 }
 
 function drawMorningVotePlayersList(players) {
@@ -314,6 +346,15 @@ function morningVote(playerId, displayName) {
     clientObj.voteName = displayName;
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
     socket.emit('morning vote', playerId);
+}
+
+function werewolfVote(playerId, displayName) {
+    if (clientObj.werewolfVoteName) return;
+
+    drawPlayersList(clientObj.players); // プレーヤー名の表示を元に戻す
+    clientObj.werewolfVoteName = displayName;
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    socket.emit('werewolf vote', playerId);
 }
 
 function drawRunoffElectionPlayersList(players, suspendedPlayers) {
@@ -478,12 +519,27 @@ function displayGaming(day, time, nextEventTime) {
         time === 'runoffElection' ||
         time === 'runoffElectionResult'
     ) {
+
         ctx.fillStyle = "lightcyan";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "orangered";
         ctx.arc(100, 100, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
         ctx.fill();
+
+    } else if (time === 'night') {
+
+        ctx.fillStyle = "midnightblue";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "gold";
+        ctx.arc(100, 100, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
+        ctx.fill();
+
+        ctx.fillStyle = "midnightblue";
+        ctx.arc(90, 100, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
+        ctx.fill();
     }
+
 
     if (time === 'morning') {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
@@ -540,6 +596,18 @@ function displayGaming(day, time, nextEventTime) {
             ctx.font = "18px 'ＭＳ Ｐゴシック'";
             ctx.fillStyle = "black";
             ctx.fillText(`${votedPlayer.displayName} さんの処刑が決定いたしました。`, 10, 120);
+        }
+    }
+
+    if (time === 'night') {
+        ctx.font = "20px 'ＭＳ Ｐゴシック'";
+        ctx.fillStyle = "black";
+        ctx.fillText(`Day ${day} 夜の残り時間 ${remainTimeText}`, 10, 22);
+
+        if (clientObj.werewolfVoteName) { // 投票先が決まったなら（狼の場合）
+            ctx.font = "32px 'ＭＳ Ｐゴシック'";
+            ctx.fillStyle = "black";
+            ctx.fillText(`「${clientObj.werewolfVoteName}」に投票`, 10, 120);
         }
     }
 }

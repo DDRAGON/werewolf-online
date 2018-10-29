@@ -7,35 +7,39 @@ function createTableSocketServer(io, game) {
         const rootIo = io.of(`/table${tableId}`);
         rootIo.on('connection', function (socket) {
 
-           const displayName = socket.handshake.query.displayName;
-           const thumbUrl = socket.handshake.query.thumbUrl;
-           const twitterId = socket.handshake.query.twitterId;
+            const displayName = socket.handshake.query.displayName;
+            const thumbUrl = socket.handshake.query.thumbUrl;
+            const twitterId = socket.handshake.query.twitterId;
 
-           if (!displayName || !thumbUrl || !twitterId) { // バリデーション
-              socket.disconnect();
-              return;
-           }
+            if (!displayName || !thumbUrl || !twitterId) { // バリデーション
+                socket.disconnect();
+                return;
+            }
 
-           const startObj = game.newConnection(socket.id, tableId, displayName, thumbUrl, twitterId);
-           socket.emit('start data', startObj);
-           rootIo.emit('players list', game.getPlayersList(tableId));
+            const startObj = game.newConnection(socket.id, tableId, displayName, thumbUrl, twitterId);
+            socket.emit('start data', startObj);
+            rootIo.emit('players list', game.getPlayersList(tableId));
 
-           socket.on('chat text', (chatText) => {
-               const chatObj = game.gotChatText(socket.id, tableId, displayName, thumbUrl, chatText);
-               rootIo.emit('new chat', chatObj);
-           });
+            socket.on('chat text', (chatText) => {
+                const chatObj = game.gotChatText(socket.id, tableId, displayName, thumbUrl, chatText);
+                rootIo.emit('new chat', chatObj);
+            });
 
-           socket.on('private chat text', (privateChatText) => {
-               game.gotPrivateChatText(socket.id, tableId, displayName, thumbUrl, privateChatText);
-           });
+            socket.on('private chat text', (privateChatText) => {
+                game.gotPrivateChatText(socket.id, tableId, displayName, thumbUrl, privateChatText);
+            });
 
-           socket.on('morning vote', (playerId) => {
-               game.morningVoted(socket.id, tableId, playerId);
-           });
+            socket.on('morning vote', (playerId) => {
+                game.morningVoted(socket.id, tableId, playerId);
+            });
 
-           socket.on('runoff election vote', (suspendedPlayerId) => {
-               game.runoffElectionVoted(socket.id, tableId, suspendedPlayerId);
-           });
+            socket.on('runoff election vote', (suspendedPlayerId) => {
+                game.runoffElectionVoted(socket.id, tableId, suspendedPlayerId);
+            });
+
+            socket.on('werewolf vote', (playerId) => {
+                game.werewolfVoted(socket.id, tableId, playerId);
+            });
 
         });
 

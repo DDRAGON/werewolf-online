@@ -283,6 +283,26 @@ function changeEvent(tableId) {
 
            setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
            break;
+
+        case 'night':
+            const playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
+            const killedPlayers = nightVoteAddingUp(tableId, playersAndAIsMap);
+
+            table.time = 'morning';
+
+            //dt.setMinutes(dt.getMinutes() + gameObj.morningMinutes); // 朝の時間は５分
+            dt.setSeconds(dt.getSeconds() + 10);
+            table.nextEventTime = dt.getTime();
+
+            gameObj.tableSocketsMap.get(tableId).emit('morning vote result', {
+                time: table.time,
+                nextEventTime: table.nextEventTime,
+                playersList: getPlayersList(tableId),
+                suspendedPlayers: Array.from(suspendedPlayersMap)
+            });
+
+            setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
+            break;
     }
 }
 
@@ -316,7 +336,7 @@ function night(table, nextEventTime) {
 function makePlayersWithoutWerewolf(tableId) {
     const playersWithoutWerewolfMap = new Map();
     for ([playerId, player] of table.players) {
-        if (player.role !== '人狼') {
+        if (player.role !== '人狼' && player.isAlive === true) {
             playersWithoutWerewolfMap.set(playerId, player);
         }
     }
@@ -409,6 +429,32 @@ function runoffElectionVoted(socketId, tableId, playerId) {
         voteMethod: 'choice'
     }
 }
+
+function werewolfVoted(socketId, tableId, playerId){
+    const table = tables[tableId];
+    const sendPlayerId = table.playerBySockets.get(socketId).playerId;
+    const sendPlayer = table.players.get(sendPlayerId);
+
+    if (sendPlayer.role !== '人狼' || sendPlayer.werewolfVotedto || !sendPlayer.isAlive) return; // すでに投票している。もしくは死者
+
+    let votedPlayer;
+    if (table.players.has(playerId)) {
+        votedPlayer = table.players.get(playerId);
+    } else if (table.AIs.has(playerId)) {
+        votedPlayer = table.AIs.get(playerId);
+    } else {
+        console.log(`table ${tableId}、 voted player not found.`);
+        return;
+    }
+
+
+    sendPlayer.werewolfVotedto = {
+        playerId,
+        displayName: votedPlayer.displayName,
+        voteMethod: 'choice'
+    }
+}
+
 
 function voteAddingUp(tableId, candidatesMap) {
     const table = tables[tableId];
@@ -622,5 +668,6 @@ module.exports = {
     registerEntryRootIo,
     registerTablesRootIo,
     morningVoted,
-    runoffElectionVoted
+    runoffElectionVoted,
+    werewolfVoted
 };
