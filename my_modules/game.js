@@ -95,7 +95,6 @@ function getPlayersList(tableId) {
 }
 
 function gotChatText(socketId, tableId, displayName, thumbUrl, chatText) {
-   console.log({socketId, tableId, displayName, thumbUrl, chatText});
    const chatTime = new Date().getTime();
    const chatId = calcChatId(tableId, displayName, chatText, chatTime);
    const chatObj = {
@@ -111,7 +110,6 @@ function gotChatText(socketId, tableId, displayName, thumbUrl, chatText) {
 }
 
 function gotPrivateChatText(socketId, tableId, displayName, thumbUrl, privateChatText) {
-    console.log({memo: 'in gotPrivateChatText', socketId, tableId, displayName, thumbUrl, privateChatText});
     const table = gameObj.tables[tableId];
     const sendPlayerId = table.playerBySockets.get(socketId).playerId;
     const sendPlayer = table.players.get(sendPlayerId);
@@ -238,7 +236,13 @@ function changeEvent(tableId) {
             break;
 
         case 'morningVoteResult':
+        case 'runoffElectionResult':
             table.time = 'night';
+            // dt.setMinutes(dt.getMinutes() + 1); // 夜の時間は１分
+            dt.setSeconds(dt.getSeconds() + 15);
+            table.nextEventTime = dt.getTime();
+
+            night(table, table.nextEventTime);
             break;
 
         case 'morningVoteResultAndNextIsRunoffElection':
@@ -279,10 +283,70 @@ function changeEvent(tableId) {
 
            setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
            break;
+    }
+}
 
-        case 'runoffElectionResult':
-            table.time = 'night';
-            break;
+function night(table, nextEventTime) {
+    const playersWithoutWerewolfMap = makePlayersWithoutWerewolf(tableId);
+    for ([playerId, player] of table.players) {
+        const socketId = player.socketId;
+
+        if (player.role === '人狼') {
+            gameObj.tableSocketsMap.get(tableId).to(socketId).emit('Hi werewolf, night has come', {
+                playersWithoutWerewolfMap,
+                time: table.time,
+                nextEventTime
+            });
+        } else if (player.role === '霊能者') {
+            const deadPlayersColorMap = getDeadPlayersColor(tableId);
+            gameObj.tableSocketsMap.get(tableId).to(socketId).emit('Hi goast, night has come', {
+                deadPlayersColorMap: Array.from(deadPlayersColorMap),
+                time: table.time,
+                nextEventTime
+            });
+        } else {
+            gameObj.tableSocketsMap.get(tableId).to(socketId).emit('night has come', {
+                time: table.time,
+                nextEventTime
+            });
+        }
+    }
+}
+
+function makePlayersWithoutWerewolf(tableId) {
+    const playersWithoutWerewolfMap = new Map();
+    for ([playerId, player] of table.players) {
+        if (player.role !== '人狼') {
+            playersWithoutWerewolfMap.set(playerId, player);
+        }
+    }
+
+    return playersWithoutWerewolfMap;
+}
+
+function getDeadPlayersColor(tableId) {
+    const table = tables[tableId];
+    const deadPlayersColorMap = new Map();
+    for ([playerId, player] of table.players) {
+        if (player.isAlive === false) {
+            const color = getColorFromRole(player.role);
+            deadPlayersColorMap.set(playerId, color);
+        }
+    }
+
+    return deadPlayersColorMap;
+}
+
+function getColorFromRole(role) {
+    if (
+        role === '村人' || role === '共有者' || role === '占い師' ||　role === '狩人' ||
+        role === '霊能者' ||　role === '狂人' ||　role === '妖狐'
+    ) {
+        return '白';
+    }
+
+    if (role === '人狼') {
+        return '黒'
     }
 }
 

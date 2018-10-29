@@ -136,6 +136,29 @@ socket.on('runoff election result', (data) => {
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
 });
 
+socket.on('night has come', (data) => {
+    clientObj.time = data.time;
+    clientObj.nextEventTime = data.nextEventTime;
+    drawPlayersListWithVote(clientObj.players);
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+});
+
+socket.on('Hi goast, night has come', (data) => {
+    clientObj.time = data.time;
+    clientObj.nextEventTime = data.nextEventTime;
+    const deadPlayersColorMap = new Map(data.deadPlayersColorMap);
+    drawPlayersListWithVoteAndGoast(clientObj.players, deadPlayersColorMap);
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+});
+
+socket.on('Hi werewolf, night has come', (data) => {
+    clientObj.time = data.time;
+    clientObj.nextEventTime = data.nextEventTime;
+    const playersWithoutWerewolfMap = new Map(data.playersWithoutWerewolfMap);
+    drawPlayersListWithVoteAndWerewolf(clientObj.players, playersWithoutWerewolfMap);
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+});
+
 
 function drawPlayersList(players) {
     $('#participants').empty();
@@ -195,11 +218,27 @@ function drawPlayersListWithVote(players) {
     }
     for (let [playerId, player] of players) {
         if (player.isAlive === true) continue;
-        $('<div>', {
-            id: playerId,
-            text: `💀 ${player.displayName}`,
-            class: 'dead'
-        }).appendTo('#participants');
+
+        if (player.color && player.color === '白') {
+            $('<div>', {
+                id: playerId,
+                text: `💀 □${player.displayName}`,
+                class: 'dead'
+            }).appendTo('#participants');
+        } else if (player.color && player.color === '黒') {
+            $('<div>', {
+                id: playerId,
+                text: `💀 ■${player.displayName}`,
+                class: 'dead'
+            }).appendTo('#participants');
+        } else {
+            $('<div>', {
+                id: playerId,
+                text: `💀 ${player.displayName}`,
+                class: 'dead'
+            }).appendTo('#participants');
+        }
+    
         if (player.votedto) {
             if (player.votedto.voteMethod === 'random') {
                 $('<span>', {
@@ -227,6 +266,19 @@ function drawPlayersListWithVote(players) {
             }
         }
     }
+}
+
+function drawPlayersListWithVoteAndGoast(players, deadPlayersColorMap) {
+    for (let [playerId, player] of players) {
+        if (player.isAlive === true) continue;
+
+        player.color = deadPlayersColorMap.get(playerId);
+    }
+    drawPlayersListWithVote(players);
+}
+
+function drawPlayersListWithVoteAndWerewolf(players, playersWithoutWerewolfMap) {
+
 }
 
 function drawMorningVotePlayersList(players) {
