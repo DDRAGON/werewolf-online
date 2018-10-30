@@ -30,6 +30,7 @@ span.startTime {
 
 span.voteSpan {
     display: block;
+    font-size: 11px;
 }
 
 table {

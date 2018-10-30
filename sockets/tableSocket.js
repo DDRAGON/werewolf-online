@@ -41,6 +41,14 @@ function createTableSocketServer(io, game) {
                 game.werewolfVoted(socket.id, tableId, playerId);
             });
 
+            socket.on('tell fortunes', (playerId) => {
+                game.tellFortunes(socket.id, tableId, playerId);
+            });
+
+            socket.on('protect', (playerId) => {
+                game.protect(socket.id, tableId, playerId);
+            });
+
         });
 
         tableSocketsMap.set(tableId, rootIo);

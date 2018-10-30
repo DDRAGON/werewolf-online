@@ -4,11 +4,13 @@ moment.tz.setDefault("Asia/Tokyo");
 const tables = [];
 for (let tableId = 1; tableId <= 16; tableId++) {
    const table = {
+       tableId: tableId,
        players: new Map(),
        playerBySockets: new Map(),
        AIs: new Map(),
        chats: new Map(),
        privateChats: new Map(),
+       fortuneToldPlayersMap: new Map(),
        tableState: 'waiting'
    };
 
@@ -36,6 +38,7 @@ function newConnection(socketId, tableId, displayName, thumbUrl, twitterId) {
        // new player
        const player = {
            tableId,
+           playerId,
            displayName,
            thumbUrl,
            twitterId,
@@ -63,9 +66,10 @@ function newConnection(socketId, tableId, displayName, thumbUrl, twitterId) {
    }
 
    return {
-      chats: Array.from(table.chats),
+       chats: Array.from(table.chats),
        startTime:  table.startTime,
-       tableState: table.tableState
+       tableState: table.tableState,
+       yourPlayerId: playerId
    };
 }
 
@@ -189,6 +193,7 @@ function changeEvent(tableId) {
     const table = tables[tableId];
     const dt = new Date();
     let suspendedPlayersMap = new Map();
+    let playersAndAIsMap = new Map();
 
     switch (table.time) {
         case 'morning':
@@ -210,7 +215,7 @@ function changeEvent(tableId) {
             break;
 
         case 'morningVote':
-            const playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
+            playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
             suspendedPlayersMap = voteAddingUp(tableId, playersAndAIsMap);
             table.suspendedPlayers = suspendedPlayersMap;
 
@@ -243,6 +248,7 @@ function changeEvent(tableId) {
             table.nextEventTime = dt.getTime();
 
             night(table, table.nextEventTime);
+            setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
             break;
 
         case 'morningVoteResultAndNextIsRunoffElection':
@@ -285,47 +291,76 @@ function changeEvent(tableId) {
            break;
 
         case 'night':
-            const playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
-            const killedPlayers = nightVoteAddingUp(tableId, playersAndAIsMap);
+            playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
 
-            table.time = 'morning';
+            let killedPlayersMap = nightVoteAddingUp(table, playersAndAIsMap);
+            killedPlayersMap = fortuneTellingAddingUp(table, playersAndAIsMap, killedPlayersMap);
+            const publicDataOfKilledPlayersMap = new Map();
+            for ([playerId, player] of killedPlayersMap) {
+                const publicData = {
+                    playerId,
+                    displayName: player.displayName
+                };
+                publicDataOfKilledPlayersMap.set(playerId, publicData);
+            }
 
-            //dt.setMinutes(dt.getMinutes() + gameObj.morningMinutes); // 朝の時間は５分
-            dt.setSeconds(dt.getSeconds() + 10);
+            table.time = 'nightResultMorning';
+
+            //dt.setMinutes(dt.getMinutes() + gameObj.morningMinutes); // 夜の結果発表時間は15秒
+            dt.setSeconds(dt.getSeconds() + 15);
             table.nextEventTime = dt.getTime();
 
-            gameObj.tableSocketsMap.get(tableId).emit('morning vote result', {
+            gameObj.tableSocketsMap.get(tableId).emit('night result', {
                 time: table.time,
                 nextEventTime: table.nextEventTime,
                 playersList: getPlayersList(tableId),
-                suspendedPlayers: Array.from(suspendedPlayersMap)
+                killedPlayersMap: Array.from(publicDataOfKilledPlayersMap)
             });
 
             setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
+            break;
+
+        case 'nightResultMorning':
+            table.time = 'morning';
             break;
     }
 }
 
 function night(table, nextEventTime) {
-    const playersWithoutWerewolfMap = makePlayersWithoutWerewolf(tableId);
+    const playersWithoutWerewolfMap = makePlayersWithoutWerewolf(table);
     for ([playerId, player] of table.players) {
         const socketId = player.socketId;
 
         if (player.role === '人狼') {
-            gameObj.tableSocketsMap.get(tableId).to(socketId).emit('Hi werewolf, night has come', {
-                playersWithoutWerewolfMap,
+            player.werewolfVotedto = null;
+            gameObj.tableSocketsMap.get(table.tableId).to(socketId).emit('Hi werewolf, night has come', {
+                playersWithoutWerewolfMap: Array.from(playersWithoutWerewolfMap),
                 time: table.time,
                 nextEventTime
             });
         } else if (player.role === '霊能者') {
-            const deadPlayersColorMap = getDeadPlayersColor(tableId);
-            gameObj.tableSocketsMap.get(tableId).to(socketId).emit('Hi goast, night has come', {
+            const deadPlayersColorMap = getDeadPlayersColor(table.tableId);
+            gameObj.tableSocketsMap.get(table.tableId).to(socketId).emit('Hi goast, night has come', {
                 deadPlayersColorMap: Array.from(deadPlayersColorMap),
                 time: table.time,
                 nextEventTime
             });
+        } else if (player.role === '占い師') {
+            table.tellFortunesto = null;
+            const playersForFortuneTellerMap = getPlayersColorFortuneTeller(table);
+            gameObj.tableSocketsMap.get(table.tableId).to(socketId).emit('Hi fortune teller, night has come', {
+                playersForFortuneTellerMap: Array.from(playersForFortuneTellerMap),
+                time: table.time,
+                nextEventTime
+            });
+        } else if (player.role === '狩人') {
+            table.protectto = null;
+            gameObj.tableSocketsMap.get(table.tableId).to(socketId).emit('Hi hunter, night has come', {
+                time: table.time,
+                nextEventTime
+            });
         } else {
-            gameObj.tableSocketsMap.get(tableId).to(socketId).emit('night has come', {
+            gameObj.tableSocketsMap.get(table.tableId).to(socketId).emit('night has come', {
                 time: table.time,
                 nextEventTime
             });
@@ -333,9 +368,11 @@ function night(table, nextEventTime) {
     }
 }
 
-function makePlayersWithoutWerewolf(tableId) {
+function makePlayersWithoutWerewolf(table) {
     const playersWithoutWerewolfMap = new Map();
-    for ([playerId, player] of table.players) {
+    const playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
+
+    for ([playerId, player] of playersAndAIsMap) {
         if (player.role !== '人狼' && player.isAlive === true) {
             playersWithoutWerewolfMap.set(playerId, player);
         }
@@ -345,16 +382,25 @@ function makePlayersWithoutWerewolf(tableId) {
 }
 
 function getDeadPlayersColor(tableId) {
-    const table = tables[tableId];
-    const deadPlayersColorMap = new Map();
-    for ([playerId, player] of table.players) {
+    const publicPlayersMap = new Map(getPlayersList(tableId));
+    for ([playerId, player] of publicPlayersMap) {
         if (player.isAlive === false) {
-            const color = getColorFromRole(player.role);
-            deadPlayersColorMap.set(playerId, color);
+            player.color = getColorFromRole(player.role);
         }
     }
 
-    return deadPlayersColorMap;
+    return publicPlayersMap;
+}
+
+function getPlayersColorFortuneTeller(table) {
+    const publicPlayersMap = new Map(getPlayersList(table.tableId));
+    for ([playerId, player] of table.fortuneToldPlayersMap) {
+        if (publicPlayersMap.has(playerId)) {
+            publicPlayersMap.get(playerId).color = player.color
+        }
+    }
+
+    return publicPlayersMap;
 }
 
 function getColorFromRole(role) {
@@ -452,7 +498,66 @@ function werewolfVoted(socketId, tableId, playerId){
         playerId,
         displayName: votedPlayer.displayName,
         voteMethod: 'choice'
+    };
+}
+
+function tellFortunes(socketId, tableId, playerId) {
+    const table = tables[tableId];
+    const sendPlayerId = table.playerBySockets.get(socketId).playerId;
+    const sendPlayer = table.players.get(sendPlayerId);
+
+    if (sendPlayer.role !== '占い師' || table.tellFortunesto || !sendPlayer.isAlive) return; // すでに投票している。もしくは死者
+
+    let votedPlayer;
+    if (table.players.has(playerId)) {
+        votedPlayer = table.players.get(playerId);
+    } else if (table.AIs.has(playerId)) {
+        votedPlayer = table.AIs.get(playerId);
+    } else {
+        console.log(`table ${tableId}、 tolled fortune player not found.`);
+        return;
     }
+
+    table.tellFortunesto = {
+        playerId,
+        displayName: votedPlayer.displayName,
+        voteMethod: 'choice'
+    };
+
+    // 結果を送り返す
+    const color = getColorFromRole(votedPlayer.role);
+    table.fortuneToldPlayersMap.set(playerId, color);
+    gameObj.tableSocketsMap.get(tableId).to(socketId).emit('result of fortune telling', {
+        playerId,
+        displayName: votedPlayer.displayName,
+        color
+    });
+}
+
+function protect(socketId, tableId, playerId) {
+    const table = tables[tableId];
+    const sendPlayerId = table.playerBySockets.get(socketId).playerId;
+    const sendPlayer = table.players.get(sendPlayerId);
+
+    if (sendPlayer.role !== '狩人' || table.protectto || !sendPlayer.isAlive) return; // すでに投票している。もしくは死者
+
+    let votedPlayer;
+    if (table.players.has(playerId)) {
+        votedPlayer = table.players.get(playerId);
+    } else if (table.AIs.has(playerId)) {
+        votedPlayer = table.AIs.get(playerId);
+    } else {
+        console.log(`table ${tableId}、 protected player not found.`);
+        return;
+    }
+
+    if (votedPlayer.role === '狩人') return; // 狩人を守ることはできない。
+
+    table.protectto = {
+        playerId,
+        displayName: votedPlayer.displayName,
+        voteMethod: 'choice'
+    };
 }
 
 
@@ -540,6 +645,85 @@ function voteAddingUp(tableId, candidatesMap) {
         }
     }
     return mostVotedPlayers;
+}
+
+function nightVoteAddingUp(table, playersAndAIsMap) {
+    const votedPlayers = new Map();
+    let mostVote = 0;
+    let mostVotedPlayers = new Map();
+
+    for ([playerId, player] of playersAndAIsMap) {
+        if (player.role !== '人狼') continue;
+        if (!player.werewolfVotedto) continue;
+
+        const votedPlayerId = player.werewolfVotedto.playerId;
+        if (votedPlayers.has(votedPlayerId)) {
+            const votedPlayer = votedPlayers.get(votedPlayerId);
+            votedPlayer.count += 1;
+        } else {
+            const votedPlayer = {
+                votedPlayerId,
+                displayName: player.werewolfVotedto.displayName,
+                count: 1
+            };
+            votedPlayers.set(votedPlayerId, votedPlayer);
+        }
+
+        const votedPlayer = votedPlayers.get(votedPlayerId);
+        if (mostVote < votedPlayer.count) {
+            mostVote = votedPlayer.count;
+            mostVotedPlayers = new Map();
+            mostVotedPlayers.set(votedPlayerId, votedPlayer);
+        } else if (mostVote === votedPlayer.count) {
+            mostVotedPlayers.set(votedPlayerId, votedPlayer);
+        }
+    }
+
+    const killedPlayersMap = new Map();
+    let killedPlayer;
+    if (mostVotedPlayers.size > 1) {
+
+        // ランダムに一人に決める。
+        const randIndex = Math.floor(Math.random() * killedPlayersMap.size);
+        const killedPlayerId = Array.from(mostVotedPlayers)[randIndex][0];
+        killedPlayer = playersAndAIsMap.get(killedPlayerId);
+
+    } else if (mostVotedPlayers.size === 1) {
+
+        const killedPlayerId = Array.from(mostVotedPlayers)[0][0];
+        killedPlayer = playersAndAIsMap.get(killedPlayerId);
+
+    } else if (mostVotedPlayers.size === 0) {
+
+        // ランダムに一人に決める。
+        const playersWithoutWerewolfMap = makePlayersWithoutWerewolf(table);
+        const randIndex = Math.floor(Math.random() * playersWithoutWerewolfMap.size);
+        const killedPlayerId = Array.from(playersWithoutWerewolfMap)[randIndex][0];
+        killedPlayer = playersAndAIsMap.get(killedPlayerId);
+
+    }
+
+    if (killedPlayer.role === '妖狐' || killedPlayer.role === '人狼') return killedPlayersMap; // 妖狐と人狼は殺害できない。
+    if (table.protectto && table.protectto.playerId === killedPlayer.playerId) return killedPlayersMap; // 狩人が守った
+
+    // 狼に殺された
+    killedPlayer.isAlive = false;
+    killedPlayersMap.set(killedPlayer.playerId, killedPlayer);
+
+    return killedPlayersMap;
+}
+
+function fortuneTellingAddingUp(table, playersAndAIsMap, killedPlayersMap) {
+    if (!table.tellFortunesto) return killedPlayersMap; // 占っていなかったら終了
+
+    // 妖狐は占われたら死ぬ。
+    const tolledPlayer = table.players.get(table.tellFortunesto.playerId);
+    if (tolledPlayer.role === '妖狐') {
+        tolledPlayer.isAlive = false;
+        killedPlayersMap.set(tolledPlayer.playerId, tolledPlayer);
+    }
+
+    return killedPlayersMap;
 }
 
 function suspendPlayer(tableId, suspendedPlayersMap) {
@@ -669,5 +853,7 @@ module.exports = {
     registerTablesRootIo,
     morningVoted,
     runoffElectionVoted,
-    werewolfVoted
+    werewolfVoted,
+    tellFortunes,
+    protect
 };

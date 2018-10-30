@@ -11,6 +11,8 @@ const clientObj = {
     tableId: $('#dataDiv').attr('data-tableId'),
     participantsElement: $('#participants'),
     players: new Map(),
+    resultsOfFortuneTellingMap: new Map(),
+    killedPlayersMap: new Map(),
     chatAutoScroll: true,
     privateChatAutoScroll: true,
 };
@@ -70,6 +72,7 @@ socket.on('start data', (startObj) => {
 
     clientObj.tableState = startObj.tableState;
     clientObj.startTime = startObj.startTime;
+    clientObj.myPlayerId = startObj.yourPlayerId;
 });
 
 socket.on('players list', (playersArray) => {
@@ -139,23 +142,54 @@ socket.on('runoff election result', (data) => {
 socket.on('night has come', (data) => {
     clientObj.time = data.time;
     clientObj.nextEventTime = data.nextEventTime;
-    drawPlayersListWithVote(clientObj.players);
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+});
+
+socket.on('Hi fortune teller, night has come', (data) => {
+    clientObj.time = data.time;
+    clientObj.nextEventTime = data.nextEventTime;
+    clientObj.players = new Map(data.playersForFortuneTellerMap);
+    clientObj.tellFortunesName = null; // 投票のリセット
+    drawPlayersListInNightForFortuneTeller(clientObj.players);
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+});
+
+socket.on('Hi hunter, night has come', (data) => {
+    clientObj.time = data.time;
+    clientObj.nextEventTime = data.nextEventTime;
+    clientObj.protectName = null; // 守り先のリセット
+    drawPlayersListInNightForHunter(clientObj.players);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
 });
 
 socket.on('Hi goast, night has come', (data) => {
     clientObj.time = data.time;
     clientObj.nextEventTime = data.nextEventTime;
-    const deadPlayersColorMap = new Map(data.deadPlayersColorMap);
-    drawPlayersListWithVoteAndGoast(clientObj.players, deadPlayersColorMap);
+    clientObj.players = new Map(data.deadPlayersColorMap);
+    drawPlayersListWithVote(clientObj.players);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
 });
 
 socket.on('Hi werewolf, night has come', (data) => {
     clientObj.time = data.time;
     clientObj.nextEventTime = data.nextEventTime;
+    clientObj.werewolfVoteName = null; // 投票のリセット
     const playersWithoutWerewolfMap = new Map(data.playersWithoutWerewolfMap);
     drawPlayersListWithVoteAndWerewolf(clientObj.players, playersWithoutWerewolfMap);
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+});
+
+socket.on('result of fortune telling', (data) => {
+    clientObj.resultsOfFortuneTellingMap.set(clientObj.day, data);
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+});
+
+socket.on('night result', (data) => {
+    clientObj.time = data.time;
+    clientObj.nextEventTime = data.nextEventTime;
+    clientObj.players = new Map(data.playersList);
+    clientObj.killedPlayersMap = new Map(data.killedPlayersMap);
+    drawPlayersList(clientObj.players);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
 });
 
@@ -186,11 +220,19 @@ function drawPlayersListWithVote(players) {
     $('<div>', {text: '参加者一覧'}).appendTo('#participants');
     for (let [playerId, player] of players) {
         if (player.isAlive === false) continue;
+
+        let playerNameText = player.displayName;
+        if (player.color && player.color === '白') {
+            playerNameText = '□' + playerNameText;
+        } else if (player.color && player.color === '黒') {
+            playerNameText = '■' + playerNameText;
+        }
         $('<div>', {
             id: playerId,
-            text: player.displayName,
+            text: playerNameText,
             class: 'alive'
         }).appendTo('#participants');
+
         if (player.votedto.voteMethod === 'random') {
             $('<span>', {
                 text: `　投票先: ${player.votedto.displayName}（ランダム）`,
@@ -268,13 +310,207 @@ function drawPlayersListWithVote(players) {
     }
 }
 
-function drawPlayersListWithVoteAndGoast(players, deadPlayersColorMap) {
+function drawPlayersListInNightForFortuneTeller(playersForFortuneTellerMap) {
+    $('#participants').empty();
+    $('<div>', {text: '参加者一覧'}).appendTo('#participants');
+    for (let [playerId, player] of playersForFortuneTellerMap) {
+        if (player.isAlive === false) continue;
+
+        let playerNameText = player.displayName;
+        if (player.color && player.color === '白') {
+            playerNameText = '□' + playerNameText;
+        } else if (player.color && player.color === '黒') {
+            playerNameText = '■' + playerNameText;
+        }
+
+        if (playerId === clientObj.myPlayerId) { // 自分自身は占うことができない。
+
+            $('<div>', {
+                id: playerId,
+                text: player.displayName,
+                class: 'alive'
+            }).appendTo('#participants');
+
+        } else {
+
+            $('<div>', {id: `${playerId}div`}).appendTo('#participants');
+            $('<button>', {
+                id: playerId,
+                text: playerNameText,
+                class: 'alive voteButton'
+            }).appendTo(`#${playerId}div`);
+            $("#" + playerId).click(function(){
+                tellFortunes(playerId, player.displayName);
+            });
+        }
+
+        if (player.votedto.voteMethod === 'random') {
+            $('<span>', {
+                text: `　投票先: ${player.votedto.displayName}（ランダム）`,
+                class: 'voteSpan'
+            }).appendTo(`#${playerId}`);
+        } else {
+            $('<span>', {
+                text: `　投票先: ${player.votedto.displayName}`,
+                class: 'voteSpan'
+            }).appendTo(`#${playerId}`);
+        }
+        if (player.runoffElectionVotedto) {
+            if (player.runoffElectionVotedto.voteMethod === 'random') {
+                $('<span>', {
+                    text: `　決選投票: ${player.runoffElectionVotedto.displayName}（ランダム）`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            } else {
+                $('<span>', {
+                    text: `　決選投票: ${player.runoffElectionVotedto.displayName}`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            }
+        }
+    }
+
+    for (let [playerId, player] of playersForFortuneTellerMap) {
+        if (player.isAlive === true) continue;
+
+        if (player.color && player.color === '白') {
+            $('<div>', {
+                id: playerId,
+                text: `💀 □${player.displayName}`,
+                class: 'dead'
+            }).appendTo('#participants');
+        } else if (player.color && player.color === '黒') {
+            $('<div>', {
+                id: playerId,
+                text: `💀 ■${player.displayName}`,
+                class: 'dead'
+            }).appendTo('#participants');
+        } else {
+            $('<div>', {
+                id: playerId,
+                text: `💀 ${player.displayName}`,
+                class: 'dead'
+            }).appendTo('#participants');
+        }
+
+        if (player.votedto) {
+            if (player.votedto.voteMethod === 'random') {
+                $('<span>', {
+                    text: `　投票先: ${player.votedto.displayName}（ランダム）`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            } else {
+                $('<span>', {
+                    text: `　投票先: ${player.votedto.displayName}`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            }
+        }
+        if (player.runoffElectionVotedto) {
+            if (player.runoffElectionVotedto.voteMethod === 'random') {
+                $('<span>', {
+                    text: `　決選投票: ${player.runoffElectionVotedto.displayName}（ランダム）`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            } else {
+                $('<span>', {
+                    text: `　決選投票: ${player.runoffElectionVotedto.displayName}`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            }
+        }
+    }
+}
+
+function drawPlayersListInNightForHunter(players) {
+    $('#participants').empty();
+    $('<div>', {text: '参加者一覧'}).appendTo('#participants');
+    for (let [playerId, player] of players) {
+        if (player.isAlive === false) continue;
+
+        if (playerId === clientObj.myPlayerId) { // 自分自身は守ることができない。
+
+            $('<div>', {
+                id: playerId,
+                text: player.displayName,
+                class: 'alive'
+            }).appendTo('#participants');
+
+        } else {
+
+            $('<div>', {id: `${playerId}div`}).appendTo('#participants');
+            $('<button>', {
+                id: playerId,
+                text: playerNameText,
+                class: 'alive voteButton'
+            }).appendTo(`#${playerId}div`);
+            $("#" + playerId).click(function(){
+                protect(playerId, player.displayName);
+            });
+        }
+
+        if (player.votedto.voteMethod === 'random') {
+            $('<span>', {
+                text: `　投票先: ${player.votedto.displayName}（ランダム）`,
+                class: 'voteSpan'
+            }).appendTo(`#${playerId}`);
+        } else {
+            $('<span>', {
+                text: `　投票先: ${player.votedto.displayName}`,
+                class: 'voteSpan'
+            }).appendTo(`#${playerId}`);
+        }
+        if (player.runoffElectionVotedto) {
+            if (player.runoffElectionVotedto.voteMethod === 'random') {
+                $('<span>', {
+                    text: `　決選投票: ${player.runoffElectionVotedto.displayName}（ランダム）`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            } else {
+                $('<span>', {
+                    text: `　決選投票: ${player.runoffElectionVotedto.displayName}`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            }
+        }
+    }
+
     for (let [playerId, player] of players) {
         if (player.isAlive === true) continue;
 
-        player.color = deadPlayersColorMap.get(playerId);
+        $('<div>', {
+            id: playerId,
+            text: `💀 ${player.displayName}`,
+            class: 'dead'
+        }).appendTo('#participants');
+
+        if (player.votedto) {
+            if (player.votedto.voteMethod === 'random') {
+                $('<span>', {
+                    text: `　投票先: ${player.votedto.displayName}（ランダム）`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            } else {
+                $('<span>', {
+                    text: `　投票先: ${player.votedto.displayName}`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            }
+        }
+        if (player.runoffElectionVotedto) {
+            if (player.runoffElectionVotedto.voteMethod === 'random') {
+                $('<span>', {
+                    text: `　決選投票: ${player.runoffElectionVotedto.displayName}（ランダム）`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            } else {
+                $('<span>', {
+                    text: `　決選投票: ${player.runoffElectionVotedto.displayName}`,
+                    class: 'voteSpan'
+                }).appendTo(`#${playerId}`);
+            }
+        }
     }
-    drawPlayersListWithVote(players);
 }
 
 function drawPlayersListWithVoteAndWerewolf(players, playersWithoutWerewolfMap) {
@@ -351,10 +587,28 @@ function morningVote(playerId, displayName) {
 function werewolfVote(playerId, displayName) {
     if (clientObj.werewolfVoteName) return;
 
-    drawPlayersList(clientObj.players); // プレーヤー名の表示を元に戻す
+    drawPlayersListWithVote(clientObj.players); // プレーヤー名の表示を元に戻す
     clientObj.werewolfVoteName = displayName;
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
     socket.emit('werewolf vote', playerId);
+}
+
+function tellFortunes(playerId, displayName) {
+    if (clientObj.tellFortunesName) return;
+
+    drawPlayersListWithVote(clientObj.players); // プレーヤー名の表示を元に戻す
+    clientObj.tellFortunesName = displayName;
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    socket.emit('tell fortunes', playerId);
+}
+
+function protect(playerId, displayName) {
+    if (clientObj.protectName) return;
+
+    drawPlayersListWithVote(clientObj.players); // プレーヤー名の表示を元に戻す
+    clientObj.protectName = displayName;
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    socket.emit('protect', playerId);
 }
 
 function drawRunoffElectionPlayersList(players, suspendedPlayers) {
@@ -531,26 +785,29 @@ function displayGaming(day, time, nextEventTime) {
         ctx.fillStyle = "midnightblue";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        ctx.fillStyle = "gold";
+        ctx.fillStyle = "#FFD700";
         ctx.arc(100, 100, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
         ctx.fill();
 
         ctx.fillStyle = "midnightblue";
-        ctx.arc(90, 100, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
+        ctx.arc(80, 80, 20, 0 * Math.PI / 180, 360 * Math.PI / 180);
         ctx.fill();
+
+    } else if (time === 'nightResultMorning') {
+
     }
 
 
     if (time === 'morning') {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
-        ctx.fillText(`Day ${day}  ${time}  朝会議の残り時間 ${remainTimeText}`, 10, 22);
+        ctx.fillText(`Day ${day}  朝  朝会議の残り時間 ${remainTimeText}`, 10, 22);
     }
 
     if (time === 'morningVote') {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
-        ctx.fillText(`Day ${day}  ${time}  投票の残り時間 ${remainTimeText}`, 10, 22);
+        ctx.fillText(`Day ${day} 投票の残り時間 ${remainTimeText}`, 10, 22);
         if (clientObj.voteName) { // 投票先が決まったなら
             ctx.font = "32px 'ＭＳ Ｐゴシック'";
             ctx.fillStyle = "black";
@@ -561,7 +818,7 @@ function displayGaming(day, time, nextEventTime) {
     if (time === 'morningVoteResult') {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
-        ctx.fillText(`Day ${day}  ${time}  結果発表 ${remainTimeText}`, 10, 22);
+        ctx.fillText(`Day ${day}  結果発表 ${remainTimeText}`, 10, 22);
         for ([playerId, votedPlayer] of clientObj.suspendedPlayers) {
             ctx.font = "18px 'ＭＳ Ｐゴシック'";
             ctx.fillStyle = "black";
@@ -572,7 +829,7 @@ function displayGaming(day, time, nextEventTime) {
     if (time === 'morningVoteResultAndNextIsRunoffElection') {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
-        ctx.fillText(`Day ${day}  ${time}  結果発表 ${remainTimeText}`, 10, 22);
+        ctx.fillText(`Day ${day}  結果発表 ${remainTimeText}`, 10, 22);
         ctx.font = "18px 'ＭＳ Ｐゴシック'";
         ctx.fillText(`票が多かった ${clientObj.suspendedPlayers.size} 名で決選投票を行います。`, 10, 120);
     }
@@ -580,7 +837,7 @@ function displayGaming(day, time, nextEventTime) {
     if (time === 'runoffElection') {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
-        ctx.fillText(`Day ${day}  ${time}  決戦投票の残り時間 ${remainTimeText}`, 10, 22);
+        ctx.fillText(`Day ${day}  決戦投票  残り時間 ${remainTimeText}`, 10, 22);
         if (clientObj.runoffElectionVoteName) { // 投票先が決まったなら
             ctx.font = "32px 'ＭＳ Ｐゴシック'";
             ctx.fillStyle = "black";
@@ -591,7 +848,7 @@ function displayGaming(day, time, nextEventTime) {
     if (time === 'runoffElectionResult') {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
-        ctx.fillText(`Day ${day}  ${time}  結果発表 ${remainTimeText}`, 10, 22);
+        ctx.fillText(`Day ${day}  決戦投票結果発表  ${remainTimeText}`, 10, 22);
         for ([playerId, votedPlayer] of clientObj.suspendedPlayers) {
             ctx.font = "18px 'ＭＳ Ｐゴシック'";
             ctx.fillStyle = "black";
@@ -601,13 +858,50 @@ function displayGaming(day, time, nextEventTime) {
 
     if (time === 'night') {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
-        ctx.fillStyle = "black";
-        ctx.fillText(`Day ${day} 夜の残り時間 ${remainTimeText}`, 10, 22);
+        ctx.fillStyle = "white";
+        ctx.fillText(`Day ${day} 夜  残り時間 ${remainTimeText}`, 10, 22);
 
         if (clientObj.werewolfVoteName) { // 投票先が決まったなら（狼の場合）
             ctx.font = "32px 'ＭＳ Ｐゴシック'";
-            ctx.fillStyle = "black";
             ctx.fillText(`「${clientObj.werewolfVoteName}」に投票`, 10, 120);
+        }
+
+        if (!clientObj.resultsOfFortuneTellingMap.has(clientObj.day)) {
+            if (clientObj.tellFortunesName) { // 占い先が決まったなら（占い師の場合）
+                ctx.font = "32px 'ＭＳ Ｐゴシック'";
+                ctx.fillText(`「${clientObj.tellFortunesName}」を占っています。`, 10, 120);
+            }
+        } else { // 占い結果がでたなら
+            const resultOfFortuneTelling = clientObj.resultsOfFortuneTellingMap.get(clientObj.day);
+
+            ctx.font = "36px 'ＭＳ Ｐゴシック'";
+            ctx.fillText(`「${resultOfFortuneTelling.displayName}」を占った結果は`, 10, 120);
+            ctx.fillText(`${resultOfFortuneTelling.color} でした。`, 40, 150);
+        }
+    }
+
+    if (time === 'nightResultMorning') {
+        ctx.font = "20px 'ＭＳ Ｐゴシック'";
+        ctx.fillStyle = "black";
+        ctx.fillText(`Day ${day} 早朝  残り時間 ${remainTimeText}`, 10, 22);
+        ctx.font = "18px 'ＭＳ Ｐゴシック'";
+        ctx.fillText(`おはようございます。`, 100, 45);
+        if (clientObj.killedPlayersMap.size === 0) {
+            ctx.fillText(`昨晩の犠牲者はいませんでした。`, 40, 70);
+        } else {
+            ctx.fillText(`昨晩の犠牲者は`, 40, 70);
+            let positionY = 95;
+            for ([killedPlayerId, killedPlayer] of clientObj.killedPlayersMap) {
+                ctx.fillText(killedPlayer.displayName, 20, positionY);
+                positionY += 25;
+            }
+            ctx.fillText(`でした。`, 40, positionY);
+        }
+
+        if (clientObj.resultsOfFortuneTellingMap.has(clientObj.day)) {
+            const resultOfFortuneTelling = clientObj.resultsOfFortuneTellingMap.get(clientObj.day);
+            ctx.font = "12px 'ＭＳ Ｐゴシック'";
+            ctx.fillText(`占い師さん、${resultOfFortuneTelling.displayName} は ${resultOfFortuneTelling.color} でした。`, 5, 155);
         }
     }
 }
