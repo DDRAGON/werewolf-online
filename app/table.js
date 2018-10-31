@@ -12,6 +12,7 @@ const clientObj = {
     participantsElement: $('#participants'),
     players: new Map(),
     resultsOfFortuneTellingMap: new Map(),
+    deadPlayersColorMap: new Map(),
     killedPlayersMap: new Map(),
     chatAutoScroll: true,
     privateChatAutoScroll: true,
@@ -165,7 +166,7 @@ socket.on('Hi hunter, night has come', (data) => {
 socket.on('Hi goast, night has come', (data) => {
     clientObj.time = data.time;
     clientObj.nextEventTime = data.nextEventTime;
-    clientObj.players = new Map(data.deadPlayersColorMap);
+    clientObj.deadPlayersColorMap = new Map(data.deadPlayersColorMap);
     drawPlayersListWithVote(clientObj.players);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
 });
@@ -205,14 +206,33 @@ function drawPlayersList(players) {
           class: 'alive'
       }).appendTo('#participants');
    }
+   if (clientObj.role === '霊能者') {
+       players = setDeadColor(players);
+   }
     for (let [playerId, player] of players) {
         if (player.isAlive === true) continue;
+
+        let displayText = `💀 ${player.displayName}`;
+        if (player.color && player.color === '白') {
+            displayText = '○' + displayText;
+        } else if (player.color && player.color === '黒') {
+            displayText = '●' + displayText;
+        }
         $('<div>', {
             id: playerId,
-            text: player.displayName,
+            text: displayText,
             class: 'dead'
         }).appendTo('#participants');
     }
+}
+
+function setDeadColor(players) {
+    for (let [playerId, player] of players) {
+        if (player.isAlive === false && clientObj.deadPlayersColorMap.has(playerId)) {
+            player.color = clientObj.deadPlayersColorMap.get(playerId);
+        }
+    }
+    return players;
 }
 
 function drawPlayersListWithVote(players) {
@@ -223,9 +243,9 @@ function drawPlayersListWithVote(players) {
 
         let playerNameText = player.displayName;
         if (player.color && player.color === '白') {
-            playerNameText = '□' + playerNameText;
+            playerNameText = '○' + playerNameText;
         } else if (player.color && player.color === '黒') {
-            playerNameText = '■' + playerNameText;
+            playerNameText = '●' + playerNameText;
         }
         $('<div>', {
             id: playerId,
@@ -258,19 +278,23 @@ function drawPlayersListWithVote(players) {
             }
         }
     }
+
+    if (clientObj.role === '霊能者') {
+        players = setDeadColor(players);
+    }
     for (let [playerId, player] of players) {
         if (player.isAlive === true) continue;
 
         if (player.color && player.color === '白') {
             $('<div>', {
                 id: playerId,
-                text: `💀 □${player.displayName}`,
+                text: `○💀 ${player.displayName}`,
                 class: 'dead'
             }).appendTo('#participants');
         } else if (player.color && player.color === '黒') {
             $('<div>', {
                 id: playerId,
-                text: `💀 ■${player.displayName}`,
+                text: `●💀 ${player.displayName}`,
                 class: 'dead'
             }).appendTo('#participants');
         } else {
@@ -318,9 +342,9 @@ function drawPlayersListInNightForFortuneTeller(playersForFortuneTellerMap) {
 
         let playerNameText = player.displayName;
         if (player.color && player.color === '白') {
-            playerNameText = '□' + playerNameText;
+            playerNameText = '○' + playerNameText;
         } else if (player.color && player.color === '黒') {
-            playerNameText = '■' + playerNameText;
+            playerNameText = '●' + playerNameText;
         }
 
         if (playerId === clientObj.myPlayerId) { // 自分自身は占うことができない。
@@ -376,13 +400,13 @@ function drawPlayersListInNightForFortuneTeller(playersForFortuneTellerMap) {
         if (player.color && player.color === '白') {
             $('<div>', {
                 id: playerId,
-                text: `💀 □${player.displayName}`,
+                text: `◯💀 ${player.displayName}`,
                 class: 'dead'
             }).appendTo('#participants');
         } else if (player.color && player.color === '黒') {
             $('<div>', {
                 id: playerId,
-                text: `💀 ■${player.displayName}`,
+                text: `●💀 ${player.displayName}`,
                 class: 'dead'
             }).appendTo('#participants');
         } else {

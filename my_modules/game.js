@@ -372,7 +372,7 @@ function makePlayersWithoutWerewolf(table) {
     const playersWithoutWerewolfMap = new Map();
     const playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
 
-    for ([playerId, player] of playersAndAIsMap) {
+    for (let [playerId, player] of playersAndAIsMap) {
         if (player.role !== '人狼' && player.isAlive === true) {
             playersWithoutWerewolfMap.set(playerId, player);
         }
@@ -382,19 +382,24 @@ function makePlayersWithoutWerewolf(table) {
 }
 
 function getDeadPlayersColor(tableId) {
+    const deadPlayersColorMap = new Map();
     const publicPlayersMap = new Map(getPlayersList(tableId));
-    for ([playerId, player] of publicPlayersMap) {
+    console.log(tables[tableId].players);
+    for (let [playerId, player] of publicPlayersMap) {
         if (player.isAlive === false) {
-            player.color = getColorFromRole(player.role);
+            console.log(playerId);
+            console.log(tables[tableId].players.get(playerId));
+            const color = getColorFromRole(tables[tableId].players.get(playerId).role);
+            deadPlayersColorMap.set(playerId, color);
         }
     }
 
-    return publicPlayersMap;
+    return deadPlayersColorMap;
 }
 
 function getPlayersColorFortuneTeller(table) {
     const publicPlayersMap = new Map(getPlayersList(table.tableId));
-    for ([playerId, player] of table.fortuneToldPlayersMap) {
+    for (let [playerId, player] of table.fortuneToldPlayersMap) {
         if (publicPlayersMap.has(playerId)) {
             publicPlayersMap.get(playerId).color = player.color
         }
@@ -760,6 +765,16 @@ function addRoles(tableId) {
         const roleIndex = Math.floor(Math.random() * rolesArray.length);
         ai.role = rolesArray[roleIndex];
         rolesArray.splice(roleIndex, 1);
+    }
+
+    // デバッグ用 役職コントロール
+    for ([socketId, player] of gameObj.tables[tableId].players) {
+        for ([aiId, ai] of gameObj.tables[tableId].AIs) {
+            if (ai.role === '霊能者') {
+                ai.role = player.role;
+                player.role = '霊能者';
+            }
+        }
     }
 }
 
