@@ -143,6 +143,7 @@ socket.on('runoff election result', (data) => {
 socket.on('night has come', (data) => {
     clientObj.time = data.time;
     clientObj.nextEventTime = data.nextEventTime;
+    drawPlayersListWithVote(clientObj.players);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
 });
 
@@ -163,12 +164,13 @@ socket.on('Hi hunter, night has come', (data) => {
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
 });
 
-socket.on('Hi goast, night has come', (data) => {
-    clientObj.time = data.time;
-    clientObj.nextEventTime = data.nextEventTime;
-    clientObj.deadPlayersColorMap = new Map(data.deadPlayersColorMap);
-    drawPlayersListWithVote(clientObj.players);
-    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+socket.on('Hi psychic, give you ghost data', (deadPlayersColorArray) => {
+    clientObj.deadPlayersColorMap = new Map(deadPlayersColorArray);
+    if (clientObj.time === 'night' || clientObj.time === 'morningVoteResult' || clientObj.time === 'runoffElectionResult') {
+        drawPlayersListWithVote(clientObj.players);
+    } else {
+        drawPlayersList(clientObj.players);
+    }
 });
 
 socket.on('Hi werewolf, night has come', (data) => {
@@ -198,55 +200,65 @@ socket.on('night result', (data) => {
 function drawPlayersList(players) {
     $('#participants').empty();
     $('<div>', {text: '参加者一覧'}).appendTo('#participants');
+
    for (let [playerId, player] of players) {
        if (player.isAlive === false) continue;
-      $('<div>', {
-         id: playerId,
-         text: player.displayName,
-          class: 'alive'
-      }).appendTo('#participants');
+
+       const playerNameText = getPlayerNameWithColor(playerId, player);
+
+       $('<div>', {
+           id: playerId,
+           text: playerNameText,
+           class: 'alive'
+       }).appendTo('#participants');
    }
-   if (clientObj.role === '霊能者') {
-       players = setDeadColor(players);
-   }
+
     for (let [playerId, player] of players) {
         if (player.isAlive === true) continue;
 
-        let displayText = `💀 ${player.displayName}`;
-        if (player.color && player.color === '白') {
-            displayText = '○' + displayText;
-        } else if (player.color && player.color === '黒') {
-            displayText = '●' + displayText;
-        }
+        const playerNameText = getPlayerNameWithColor(playerId, player);
+
         $('<div>', {
             id: playerId,
-            text: displayText,
+            text: playerNameText,
             class: 'dead'
         }).appendTo('#participants');
     }
 }
 
-function setDeadColor(players) {
-    for (let [playerId, player] of players) {
-        if (player.isAlive === false && clientObj.deadPlayersColorMap.has(playerId)) {
-            player.color = clientObj.deadPlayersColorMap.get(playerId);
-        }
+function getPlayerNameWithColor(playerId, player) {
+    let displayText = player.displayName;
+    let color = null;
+
+    if (player.isAlive === false) {
+        displayText = '💀' + displayText;
     }
-    return players;
+
+    if (clientObj.resultsOfFortuneTellingMap.has(playerId)) {
+        color = clientObj.resultsOfFortuneTellingMap.get(playerId);
+    } else if (player.isAlive === false && clientObj.deadPlayersColorMap.has(playerId)) {
+        color = clientObj.deadPlayersColorMap.get(playerId);
+    }
+
+    if (color && color === '白') {
+        displayText = '⚪ ' + displayText;
+    } else if (color && color === '黒') {
+        displayText = '⚫ ' + displayText;
+    }
+
+    return displayText;
 }
 
 function drawPlayersListWithVote(players) {
     $('#participants').empty();
     $('<div>', {text: '参加者一覧'}).appendTo('#participants');
+
+    players = setColors(players);
+
     for (let [playerId, player] of players) {
         if (player.isAlive === false) continue;
 
-        let playerNameText = player.displayName;
-        if (player.color && player.color === '白') {
-            playerNameText = '○' + playerNameText;
-        } else if (player.color && player.color === '黒') {
-            playerNameText = '●' + playerNameText;
-        }
+        const playerNameText = getPlayerNameWithColor(playerId, player);
         $('<div>', {
             id: playerId,
             text: playerNameText,
@@ -279,32 +291,17 @@ function drawPlayersListWithVote(players) {
         }
     }
 
-    if (clientObj.role === '霊能者') {
-        players = setDeadColor(players);
-    }
     for (let [playerId, player] of players) {
         if (player.isAlive === true) continue;
 
-        if (player.color && player.color === '白') {
-            $('<div>', {
-                id: playerId,
-                text: `○💀 ${player.displayName}`,
-                class: 'dead'
-            }).appendTo('#participants');
-        } else if (player.color && player.color === '黒') {
-            $('<div>', {
-                id: playerId,
-                text: `●💀 ${player.displayName}`,
-                class: 'dead'
-            }).appendTo('#participants');
-        } else {
-            $('<div>', {
-                id: playerId,
-                text: `💀 ${player.displayName}`,
-                class: 'dead'
-            }).appendTo('#participants');
-        }
-    
+        const playerNameText = getPlayerNameWithColor(playerId, player);
+        $('<div>', {
+            id: playerId,
+            text: playerNameText,
+            class: 'dead'
+        }).appendTo('#participants');
+
+
         if (player.votedto) {
             if (player.votedto.voteMethod === 'random') {
                 $('<span>', {
@@ -318,6 +315,7 @@ function drawPlayersListWithVote(players) {
                 }).appendTo(`#${playerId}`);
             }
         }
+
         if (player.runoffElectionVotedto) {
             if (player.runoffElectionVotedto.voteMethod === 'random') {
                 $('<span>', {
@@ -340,13 +338,6 @@ function drawPlayersListInNightForFortuneTeller(playersForFortuneTellerMap) {
     for (let [playerId, player] of playersForFortuneTellerMap) {
         if (player.isAlive === false) continue;
 
-        let playerNameText = player.displayName;
-        if (player.color && player.color === '白') {
-            playerNameText = '○' + playerNameText;
-        } else if (player.color && player.color === '黒') {
-            playerNameText = '●' + playerNameText;
-        }
-
         if (playerId === clientObj.myPlayerId) { // 自分自身は占うことができない。
 
             $('<div>', {
@@ -357,6 +348,7 @@ function drawPlayersListInNightForFortuneTeller(playersForFortuneTellerMap) {
 
         } else {
 
+            const playerNameText = getPlayerNameWithColor(playerId, player);
             $('<div>', {id: `${playerId}div`}).appendTo('#participants');
             $('<button>', {
                 id: playerId,
@@ -397,25 +389,12 @@ function drawPlayersListInNightForFortuneTeller(playersForFortuneTellerMap) {
     for (let [playerId, player] of playersForFortuneTellerMap) {
         if (player.isAlive === true) continue;
 
-        if (player.color && player.color === '白') {
-            $('<div>', {
-                id: playerId,
-                text: `◯💀 ${player.displayName}`,
-                class: 'dead'
-            }).appendTo('#participants');
-        } else if (player.color && player.color === '黒') {
-            $('<div>', {
-                id: playerId,
-                text: `●💀 ${player.displayName}`,
-                class: 'dead'
-            }).appendTo('#participants');
-        } else {
-            $('<div>', {
-                id: playerId,
-                text: `💀 ${player.displayName}`,
-                class: 'dead'
-            }).appendTo('#participants');
-        }
+        const playerNameText = getPlayerNameWithColor(playerId, player);
+        $('<div>', {
+            id: playerId,
+            text: playerNameText,
+            class: 'dead'
+        }).appendTo('#participants');
 
         if (player.votedto) {
             if (player.votedto.voteMethod === 'random') {
@@ -579,10 +558,13 @@ function drawMorningVotePlayersList(players) {
 
     for (let [playerId, player] of players) {
         if (player.isAlive === false) continue;
+
+        const playerNameText = getPlayerNameWithColor(playerId, player);
+
         $('<div>', {id: `${playerId}div`}).appendTo('#participants');
         $('<button>', {
             id: playerId,
-            text: player.displayName,
+            text: playerNameText,
             class: 'alive voteButton'
         }).appendTo(`#${playerId}div`);
         $("#" + playerId).click(function(){
@@ -591,9 +573,12 @@ function drawMorningVotePlayersList(players) {
     }
     for (let [playerId, player] of players) {
         if (player.isAlive === true) continue;
+
+        const playerNameText = getPlayerNameWithColor(playerId, player);
+
         $('<div>', {
             id: playerId,
-            text: player.displayName,
+            text: playerNameText,
             class: 'dead'
         }).appendTo('#participants');
     }
@@ -640,10 +625,13 @@ function drawRunoffElectionPlayersList(players, suspendedPlayers) {
     $('<div>', {text: '参加者一覧'}).appendTo('#participants');
 
     for (let [suspendedPlayerId, suspendedPlayer] of suspendedPlayers) {
+
+        const playerNameText = getPlayerNameWithColor(playerId, player);
+        
         $('<div>', {id: `${suspendedPlayerId}div`}).appendTo('#participants');
         $('<button>', {
             id: suspendedPlayerId,
-            text: suspendedPlayer.displayName,
+            text: playerNameText,
             class: 'alive voteButton'
         }).appendTo(`#${suspendedPlayerId}div`);
         $("#" + suspendedPlayerId).click(function(){
@@ -655,18 +643,30 @@ function drawRunoffElectionPlayersList(players, suspendedPlayers) {
         if (player.isAlive === false) continue;
         if (suspendedPlayers.has(playerId)) continue;
 
+        const playerNameText = getPlayerNameWithColor(playerId, player);
+
         $('<div>', {
             id: playerId,
-            text: player.displayName,
+            text: playerNameText,
             class: 'alive'
         }).appendTo('#participants');
     }
     for (let [playerId, player] of players) {
         if (player.isAlive === true) continue;
 
+        let playerNameText = `💀${player.displayName}`;
+        if (clientObj.resultsOfFortuneTellingMap.has(playerId)) {
+            const color = clientObj.resultsOfFortuneTellingMap.get(playerId);
+            if (color === '白') {
+                playerNameText = '⚪' + playerNameText;
+            } else if (color === '黒') {
+                playerNameText = '⚫' + playerNameText;
+            }
+        }
+
         $('<div>', {
             id: playerId,
-            text: player.displayName,
+            text: playerNameText,
             class: 'dead'
         }).appendTo('#participants');
     }

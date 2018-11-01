@@ -37470,6 +37470,7 @@ socket.on('runoff election result', function (data) {
 socket.on('night has come', function (data) {
     clientObj.time = data.time;
     clientObj.nextEventTime = data.nextEventTime;
+    drawPlayersListWithVote(clientObj.players);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
 });
 
@@ -37490,12 +37491,13 @@ socket.on('Hi hunter, night has come', function (data) {
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
 });
 
-socket.on('Hi goast, night has come', function (data) {
-    clientObj.time = data.time;
-    clientObj.nextEventTime = data.nextEventTime;
-    clientObj.deadPlayersColorMap = new Map(data.deadPlayersColorMap);
-    drawPlayersListWithVote(clientObj.players);
-    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+socket.on('Hi psychic, give you ghost data', function (deadPlayersColorArray) {
+    clientObj.deadPlayersColorMap = new Map(deadPlayersColorArray);
+    if (clientObj.time === 'night' || clientObj.time === 'morningVoteResult' || clientObj.time === 'runoffElectionResult') {
+        drawPlayersListWithVote(clientObj.players);
+    } else {
+        drawPlayersList(clientObj.players);
+    }
 });
 
 socket.on('Hi werewolf, night has come', function (data) {
@@ -37524,6 +37526,7 @@ socket.on('night result', function (data) {
 function drawPlayersList(players) {
     (0, _jquery2.default)('#participants').empty();
     (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
+
     var _iteratorNormalCompletion2 = true;
     var _didIteratorError2 = false;
     var _iteratorError2 = undefined;
@@ -37534,13 +37537,16 @@ function drawPlayersList(players) {
 
             var _ref4 = _slicedToArray(_ref3, 2);
 
-            var playerId = _ref4[0];
-            var player = _ref4[1];
+            var _playerId = _ref4[0];
+            var _player = _ref4[1];
 
-            if (player.isAlive === false) continue;
+            if (_player.isAlive === false) continue;
+
+            var _playerNameText = getPlayerNameWithColor(_playerId, _player);
+
             (0, _jquery2.default)('<div>', {
-                id: playerId,
-                text: player.displayName,
+                id: _playerId,
+                text: _playerNameText,
                 class: 'alive'
             }).appendTo('#participants');
         }
@@ -37559,9 +37565,6 @@ function drawPlayersList(players) {
         }
     }
 
-    if (clientObj.role === '霊能者') {
-        players = setDeadColor(players);
-    }
     var _iteratorNormalCompletion3 = true;
     var _didIteratorError3 = false;
     var _iteratorError3 = undefined;
@@ -37572,20 +37575,16 @@ function drawPlayersList(players) {
 
             var _ref6 = _slicedToArray(_ref5, 2);
 
-            var _playerId = _ref6[0];
-            var _player = _ref6[1];
+            var _playerId2 = _ref6[0];
+            var _player2 = _ref6[1];
 
-            if (_player.isAlive === true) continue;
+            if (_player2.isAlive === true) continue;
 
-            var displayText = '\uD83D\uDC80 ' + _player.displayName;
-            if (_player.color && _player.color === '白') {
-                displayText = '○' + displayText;
-            } else if (_player.color && _player.color === '黒') {
-                displayText = '●' + displayText;
-            }
+            var _playerNameText2 = getPlayerNameWithColor(_playerId2, _player2);
+
             (0, _jquery2.default)('<div>', {
-                id: _playerId,
-                text: displayText,
+                id: _playerId2,
+                text: _playerNameText2,
                 class: 'dead'
             }).appendTo('#participants');
         }
@@ -37605,7 +37604,35 @@ function drawPlayersList(players) {
     }
 }
 
-function setDeadColor(players) {
+function getPlayerNameWithColor(playerId, player) {
+    var displayText = player.displayName;
+    var color = null;
+
+    if (player.isAlive === false) {
+        displayText = '💀' + displayText;
+    }
+
+    if (clientObj.resultsOfFortuneTellingMap.has(playerId)) {
+        color = clientObj.resultsOfFortuneTellingMap.get(playerId);
+    } else if (player.isAlive === false && clientObj.deadPlayersColorMap.has(playerId)) {
+        color = clientObj.deadPlayersColorMap.get(playerId);
+    }
+
+    if (color && color === '白') {
+        displayText = '⚪ ' + displayText;
+    } else if (color && color === '黒') {
+        displayText = '⚫ ' + displayText;
+    }
+
+    return displayText;
+}
+
+function drawPlayersListWithVote(players) {
+    (0, _jquery2.default)('#participants').empty();
+    (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
+
+    players = setColors(players);
+
     var _iteratorNormalCompletion4 = true;
     var _didIteratorError4 = false;
     var _iteratorError4 = undefined;
@@ -37616,11 +37643,41 @@ function setDeadColor(players) {
 
             var _ref8 = _slicedToArray(_ref7, 2);
 
-            var playerId = _ref8[0];
-            var player = _ref8[1];
+            var _playerId3 = _ref8[0];
+            var _player3 = _ref8[1];
 
-            if (player.isAlive === false && clientObj.deadPlayersColorMap.has(playerId)) {
-                player.color = clientObj.deadPlayersColorMap.get(playerId);
+            if (_player3.isAlive === false) continue;
+
+            var _playerNameText3 = getPlayerNameWithColor(_playerId3, _player3);
+            (0, _jquery2.default)('<div>', {
+                id: _playerId3,
+                text: _playerNameText3,
+                class: 'alive'
+            }).appendTo('#participants');
+
+            if (_player3.votedto.voteMethod === 'random') {
+                (0, _jquery2.default)('<span>', {
+                    text: '\u3000\u6295\u7968\u5148: ' + _player3.votedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
+                    class: 'voteSpan'
+                }).appendTo('#' + _playerId3);
+            } else {
+                (0, _jquery2.default)('<span>', {
+                    text: '\u3000\u6295\u7968\u5148: ' + _player3.votedto.displayName,
+                    class: 'voteSpan'
+                }).appendTo('#' + _playerId3);
+            }
+            if (_player3.runoffElectionVotedto) {
+                if (_player3.runoffElectionVotedto.voteMethod === 'random') {
+                    (0, _jquery2.default)('<span>', {
+                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + _player3.runoffElectionVotedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
+                        class: 'voteSpan'
+                    }).appendTo('#' + _playerId3);
+                } else {
+                    (0, _jquery2.default)('<span>', {
+                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + _player3.runoffElectionVotedto.displayName,
+                        class: 'voteSpan'
+                    }).appendTo('#' + _playerId3);
+                }
             }
         }
     } catch (err) {
@@ -37638,12 +37695,6 @@ function setDeadColor(players) {
         }
     }
 
-    return players;
-}
-
-function drawPlayersListWithVote(players) {
-    (0, _jquery2.default)('#participants').empty();
-    (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
     var _iteratorNormalCompletion5 = true;
     var _didIteratorError5 = false;
     var _iteratorError5 = undefined;
@@ -37654,45 +37705,43 @@ function drawPlayersListWithVote(players) {
 
             var _ref10 = _slicedToArray(_ref9, 2);
 
-            var playerId = _ref10[0];
-            var player = _ref10[1];
+            var _playerId4 = _ref10[0];
+            var _player4 = _ref10[1];
 
-            if (player.isAlive === false) continue;
+            if (_player4.isAlive === true) continue;
 
-            var _playerNameText = player.displayName;
-            if (player.color && player.color === '白') {
-                _playerNameText = '○' + _playerNameText;
-            } else if (player.color && player.color === '黒') {
-                _playerNameText = '●' + _playerNameText;
-            }
+            var _playerNameText4 = getPlayerNameWithColor(_playerId4, _player4);
             (0, _jquery2.default)('<div>', {
-                id: playerId,
-                text: _playerNameText,
-                class: 'alive'
+                id: _playerId4,
+                text: _playerNameText4,
+                class: 'dead'
             }).appendTo('#participants');
 
-            if (player.votedto.voteMethod === 'random') {
-                (0, _jquery2.default)('<span>', {
-                    text: '\u3000\u6295\u7968\u5148: ' + player.votedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
-                    class: 'voteSpan'
-                }).appendTo('#' + playerId);
-            } else {
-                (0, _jquery2.default)('<span>', {
-                    text: '\u3000\u6295\u7968\u5148: ' + player.votedto.displayName,
-                    class: 'voteSpan'
-                }).appendTo('#' + playerId);
-            }
-            if (player.runoffElectionVotedto) {
-                if (player.runoffElectionVotedto.voteMethod === 'random') {
+            if (_player4.votedto) {
+                if (_player4.votedto.voteMethod === 'random') {
                     (0, _jquery2.default)('<span>', {
-                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + player.runoffElectionVotedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
+                        text: '\u3000\u6295\u7968\u5148: ' + _player4.votedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
                         class: 'voteSpan'
-                    }).appendTo('#' + playerId);
+                    }).appendTo('#' + _playerId4);
                 } else {
                     (0, _jquery2.default)('<span>', {
-                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + player.runoffElectionVotedto.displayName,
+                        text: '\u3000\u6295\u7968\u5148: ' + _player4.votedto.displayName,
                         class: 'voteSpan'
-                    }).appendTo('#' + playerId);
+                    }).appendTo('#' + _playerId4);
+                }
+            }
+
+            if (_player4.runoffElectionVotedto) {
+                if (_player4.runoffElectionVotedto.voteMethod === 'random') {
+                    (0, _jquery2.default)('<span>', {
+                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + _player4.runoffElectionVotedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
+                        class: 'voteSpan'
+                    }).appendTo('#' + _playerId4);
+                } else {
+                    (0, _jquery2.default)('<span>', {
+                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + _player4.runoffElectionVotedto.displayName,
+                        class: 'voteSpan'
+                    }).appendTo('#' + _playerId4);
                 }
             }
         }
@@ -37710,71 +37759,79 @@ function drawPlayersListWithVote(players) {
             }
         }
     }
+}
 
-    if (clientObj.role === '霊能者') {
-        players = setDeadColor(players);
-    }
+function drawPlayersListInNightForFortuneTeller(playersForFortuneTellerMap) {
+    (0, _jquery2.default)('#participants').empty();
+    (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
+
+    var _loop = function _loop(_playerId5, _player5) {
+        if (_player5.isAlive === false) return 'continue';
+
+        if (_playerId5 === clientObj.myPlayerId) {
+            // 自分自身は占うことができない。
+
+            (0, _jquery2.default)('<div>', {
+                id: _playerId5,
+                text: _player5.displayName,
+                class: 'alive'
+            }).appendTo('#participants');
+        } else {
+
+            var _playerNameText6 = getPlayerNameWithColor(_playerId5, _player5);
+            (0, _jquery2.default)('<div>', { id: _playerId5 + 'div' }).appendTo('#participants');
+            (0, _jquery2.default)('<button>', {
+                id: _playerId5,
+                text: _playerNameText6,
+                class: 'alive voteButton'
+            }).appendTo('#' + _playerId5 + 'div');
+            (0, _jquery2.default)("#" + _playerId5).click(function () {
+                tellFortunes(_playerId5, _player5.displayName);
+            });
+        }
+
+        if (_player5.votedto.voteMethod === 'random') {
+            (0, _jquery2.default)('<span>', {
+                text: '\u3000\u6295\u7968\u5148: ' + _player5.votedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
+                class: 'voteSpan'
+            }).appendTo('#' + _playerId5);
+        } else {
+            (0, _jquery2.default)('<span>', {
+                text: '\u3000\u6295\u7968\u5148: ' + _player5.votedto.displayName,
+                class: 'voteSpan'
+            }).appendTo('#' + _playerId5);
+        }
+        if (_player5.runoffElectionVotedto) {
+            if (_player5.runoffElectionVotedto.voteMethod === 'random') {
+                (0, _jquery2.default)('<span>', {
+                    text: '\u3000\u6C7A\u9078\u6295\u7968: ' + _player5.runoffElectionVotedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
+                    class: 'voteSpan'
+                }).appendTo('#' + _playerId5);
+            } else {
+                (0, _jquery2.default)('<span>', {
+                    text: '\u3000\u6C7A\u9078\u6295\u7968: ' + _player5.runoffElectionVotedto.displayName,
+                    class: 'voteSpan'
+                }).appendTo('#' + _playerId5);
+            }
+        }
+    };
+
     var _iteratorNormalCompletion6 = true;
     var _didIteratorError6 = false;
     var _iteratorError6 = undefined;
 
     try {
-        for (var _iterator6 = players[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
+        for (var _iterator6 = playersForFortuneTellerMap[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
             var _ref11 = _step6.value;
 
             var _ref12 = _slicedToArray(_ref11, 2);
 
-            var _playerId2 = _ref12[0];
-            var _player2 = _ref12[1];
+            var _playerId5 = _ref12[0];
+            var _player5 = _ref12[1];
 
-            if (_player2.isAlive === true) continue;
+            var _ret = _loop(_playerId5, _player5);
 
-            if (_player2.color && _player2.color === '白') {
-                (0, _jquery2.default)('<div>', {
-                    id: _playerId2,
-                    text: '\u25CB\uD83D\uDC80 ' + _player2.displayName,
-                    class: 'dead'
-                }).appendTo('#participants');
-            } else if (_player2.color && _player2.color === '黒') {
-                (0, _jquery2.default)('<div>', {
-                    id: _playerId2,
-                    text: '\u25CF\uD83D\uDC80 ' + _player2.displayName,
-                    class: 'dead'
-                }).appendTo('#participants');
-            } else {
-                (0, _jquery2.default)('<div>', {
-                    id: _playerId2,
-                    text: '\uD83D\uDC80 ' + _player2.displayName,
-                    class: 'dead'
-                }).appendTo('#participants');
-            }
-
-            if (_player2.votedto) {
-                if (_player2.votedto.voteMethod === 'random') {
-                    (0, _jquery2.default)('<span>', {
-                        text: '\u3000\u6295\u7968\u5148: ' + _player2.votedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
-                        class: 'voteSpan'
-                    }).appendTo('#' + _playerId2);
-                } else {
-                    (0, _jquery2.default)('<span>', {
-                        text: '\u3000\u6295\u7968\u5148: ' + _player2.votedto.displayName,
-                        class: 'voteSpan'
-                    }).appendTo('#' + _playerId2);
-                }
-            }
-            if (_player2.runoffElectionVotedto) {
-                if (_player2.runoffElectionVotedto.voteMethod === 'random') {
-                    (0, _jquery2.default)('<span>', {
-                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + _player2.runoffElectionVotedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
-                        class: 'voteSpan'
-                    }).appendTo('#' + _playerId2);
-                } else {
-                    (0, _jquery2.default)('<span>', {
-                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + _player2.runoffElectionVotedto.displayName,
-                        class: 'voteSpan'
-                    }).appendTo('#' + _playerId2);
-                }
-            }
+            if (_ret === 'continue') continue;
         }
     } catch (err) {
         _didIteratorError6 = true;
@@ -37790,68 +37847,6 @@ function drawPlayersListWithVote(players) {
             }
         }
     }
-}
-
-function drawPlayersListInNightForFortuneTeller(playersForFortuneTellerMap) {
-    (0, _jquery2.default)('#participants').empty();
-    (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
-
-    var _loop = function _loop(playerId, player) {
-        if (player.isAlive === false) return 'continue';
-
-        var playerNameText = player.displayName;
-        if (player.color && player.color === '白') {
-            playerNameText = '○' + playerNameText;
-        } else if (player.color && player.color === '黒') {
-            playerNameText = '●' + playerNameText;
-        }
-
-        if (playerId === clientObj.myPlayerId) {
-            // 自分自身は占うことができない。
-
-            (0, _jquery2.default)('<div>', {
-                id: playerId,
-                text: player.displayName,
-                class: 'alive'
-            }).appendTo('#participants');
-        } else {
-
-            (0, _jquery2.default)('<div>', { id: playerId + 'div' }).appendTo('#participants');
-            (0, _jquery2.default)('<button>', {
-                id: playerId,
-                text: playerNameText,
-                class: 'alive voteButton'
-            }).appendTo('#' + playerId + 'div');
-            (0, _jquery2.default)("#" + playerId).click(function () {
-                tellFortunes(playerId, player.displayName);
-            });
-        }
-
-        if (player.votedto.voteMethod === 'random') {
-            (0, _jquery2.default)('<span>', {
-                text: '\u3000\u6295\u7968\u5148: ' + player.votedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
-                class: 'voteSpan'
-            }).appendTo('#' + playerId);
-        } else {
-            (0, _jquery2.default)('<span>', {
-                text: '\u3000\u6295\u7968\u5148: ' + player.votedto.displayName,
-                class: 'voteSpan'
-            }).appendTo('#' + playerId);
-        }
-        if (player.runoffElectionVotedto) {
-            if (player.runoffElectionVotedto.voteMethod === 'random') {
-                (0, _jquery2.default)('<span>', {
-                    text: '\u3000\u6C7A\u9078\u6295\u7968: ' + player.runoffElectionVotedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
-                    class: 'voteSpan'
-                }).appendTo('#' + playerId);
-            } else {
-                (0, _jquery2.default)('<span>', {
-                    text: '\u3000\u6C7A\u9078\u6295\u7968: ' + player.runoffElectionVotedto.displayName,
-                    class: 'voteSpan'
-                }).appendTo('#' + playerId);
-            }
-        }
-    };
 
     var _iteratorNormalCompletion7 = true;
     var _didIteratorError7 = false;
@@ -37863,12 +37858,44 @@ function drawPlayersListInNightForFortuneTeller(playersForFortuneTellerMap) {
 
             var _ref14 = _slicedToArray(_ref13, 2);
 
-            var playerId = _ref14[0];
-            var player = _ref14[1];
+            var _playerId6 = _ref14[0];
+            var _player6 = _ref14[1];
 
-            var _ret = _loop(playerId, player);
+            if (_player6.isAlive === true) continue;
 
-            if (_ret === 'continue') continue;
+            var _playerNameText5 = getPlayerNameWithColor(_playerId6, _player6);
+            (0, _jquery2.default)('<div>', {
+                id: _playerId6,
+                text: _playerNameText5,
+                class: 'dead'
+            }).appendTo('#participants');
+
+            if (_player6.votedto) {
+                if (_player6.votedto.voteMethod === 'random') {
+                    (0, _jquery2.default)('<span>', {
+                        text: '\u3000\u6295\u7968\u5148: ' + _player6.votedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
+                        class: 'voteSpan'
+                    }).appendTo('#' + _playerId6);
+                } else {
+                    (0, _jquery2.default)('<span>', {
+                        text: '\u3000\u6295\u7968\u5148: ' + _player6.votedto.displayName,
+                        class: 'voteSpan'
+                    }).appendTo('#' + _playerId6);
+                }
+            }
+            if (_player6.runoffElectionVotedto) {
+                if (_player6.runoffElectionVotedto.voteMethod === 'random') {
+                    (0, _jquery2.default)('<span>', {
+                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + _player6.runoffElectionVotedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
+                        class: 'voteSpan'
+                    }).appendTo('#' + _playerId6);
+                } else {
+                    (0, _jquery2.default)('<span>', {
+                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + _player6.runoffElectionVotedto.displayName,
+                        class: 'voteSpan'
+                    }).appendTo('#' + _playerId6);
+                }
+            }
         }
     } catch (err) {
         _didIteratorError7 = true;
@@ -37884,68 +37911,78 @@ function drawPlayersListInNightForFortuneTeller(playersForFortuneTellerMap) {
             }
         }
     }
+}
+
+function drawPlayersListInNightForHunter(players) {
+    (0, _jquery2.default)('#participants').empty();
+    (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
+
+    var _loop2 = function _loop2(_playerId7, _player7) {
+        if (_player7.isAlive === false) return 'continue';
+
+        if (_playerId7 === clientObj.myPlayerId) {
+            // 自分自身は守ることができない。
+
+            (0, _jquery2.default)('<div>', {
+                id: _playerId7,
+                text: _player7.displayName,
+                class: 'alive'
+            }).appendTo('#participants');
+        } else {
+
+            (0, _jquery2.default)('<div>', { id: _playerId7 + 'div' }).appendTo('#participants');
+            (0, _jquery2.default)('<button>', {
+                id: _playerId7,
+                text: playerNameText,
+                class: 'alive voteButton'
+            }).appendTo('#' + _playerId7 + 'div');
+            (0, _jquery2.default)("#" + _playerId7).click(function () {
+                protect(_playerId7, _player7.displayName);
+            });
+        }
+
+        if (_player7.votedto.voteMethod === 'random') {
+            (0, _jquery2.default)('<span>', {
+                text: '\u3000\u6295\u7968\u5148: ' + _player7.votedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
+                class: 'voteSpan'
+            }).appendTo('#' + _playerId7);
+        } else {
+            (0, _jquery2.default)('<span>', {
+                text: '\u3000\u6295\u7968\u5148: ' + _player7.votedto.displayName,
+                class: 'voteSpan'
+            }).appendTo('#' + _playerId7);
+        }
+        if (_player7.runoffElectionVotedto) {
+            if (_player7.runoffElectionVotedto.voteMethod === 'random') {
+                (0, _jquery2.default)('<span>', {
+                    text: '\u3000\u6C7A\u9078\u6295\u7968: ' + _player7.runoffElectionVotedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
+                    class: 'voteSpan'
+                }).appendTo('#' + _playerId7);
+            } else {
+                (0, _jquery2.default)('<span>', {
+                    text: '\u3000\u6C7A\u9078\u6295\u7968: ' + _player7.runoffElectionVotedto.displayName,
+                    class: 'voteSpan'
+                }).appendTo('#' + _playerId7);
+            }
+        }
+    };
 
     var _iteratorNormalCompletion8 = true;
     var _didIteratorError8 = false;
     var _iteratorError8 = undefined;
 
     try {
-        for (var _iterator8 = playersForFortuneTellerMap[Symbol.iterator](), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
+        for (var _iterator8 = players[Symbol.iterator](), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
             var _ref15 = _step8.value;
 
             var _ref16 = _slicedToArray(_ref15, 2);
 
-            var playerId = _ref16[0];
-            var player = _ref16[1];
+            var _playerId7 = _ref16[0];
+            var _player7 = _ref16[1];
 
-            if (player.isAlive === true) continue;
+            var _ret2 = _loop2(_playerId7, _player7);
 
-            if (player.color && player.color === '白') {
-                (0, _jquery2.default)('<div>', {
-                    id: playerId,
-                    text: '\u25EF\uD83D\uDC80 ' + player.displayName,
-                    class: 'dead'
-                }).appendTo('#participants');
-            } else if (player.color && player.color === '黒') {
-                (0, _jquery2.default)('<div>', {
-                    id: playerId,
-                    text: '\u25CF\uD83D\uDC80 ' + player.displayName,
-                    class: 'dead'
-                }).appendTo('#participants');
-            } else {
-                (0, _jquery2.default)('<div>', {
-                    id: playerId,
-                    text: '\uD83D\uDC80 ' + player.displayName,
-                    class: 'dead'
-                }).appendTo('#participants');
-            }
-
-            if (player.votedto) {
-                if (player.votedto.voteMethod === 'random') {
-                    (0, _jquery2.default)('<span>', {
-                        text: '\u3000\u6295\u7968\u5148: ' + player.votedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
-                        class: 'voteSpan'
-                    }).appendTo('#' + playerId);
-                } else {
-                    (0, _jquery2.default)('<span>', {
-                        text: '\u3000\u6295\u7968\u5148: ' + player.votedto.displayName,
-                        class: 'voteSpan'
-                    }).appendTo('#' + playerId);
-                }
-            }
-            if (player.runoffElectionVotedto) {
-                if (player.runoffElectionVotedto.voteMethod === 'random') {
-                    (0, _jquery2.default)('<span>', {
-                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + player.runoffElectionVotedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
-                        class: 'voteSpan'
-                    }).appendTo('#' + playerId);
-                } else {
-                    (0, _jquery2.default)('<span>', {
-                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + player.runoffElectionVotedto.displayName,
-                        class: 'voteSpan'
-                    }).appendTo('#' + playerId);
-                }
-            }
+            if (_ret2 === 'continue') continue;
         }
     } catch (err) {
         _didIteratorError8 = true;
@@ -37961,61 +37998,6 @@ function drawPlayersListInNightForFortuneTeller(playersForFortuneTellerMap) {
             }
         }
     }
-}
-
-function drawPlayersListInNightForHunter(players) {
-    (0, _jquery2.default)('#participants').empty();
-    (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
-
-    var _loop2 = function _loop2(playerId, player) {
-        if (player.isAlive === false) return 'continue';
-
-        if (playerId === clientObj.myPlayerId) {
-            // 自分自身は守ることができない。
-
-            (0, _jquery2.default)('<div>', {
-                id: playerId,
-                text: player.displayName,
-                class: 'alive'
-            }).appendTo('#participants');
-        } else {
-
-            (0, _jquery2.default)('<div>', { id: playerId + 'div' }).appendTo('#participants');
-            (0, _jquery2.default)('<button>', {
-                id: playerId,
-                text: playerNameText,
-                class: 'alive voteButton'
-            }).appendTo('#' + playerId + 'div');
-            (0, _jquery2.default)("#" + playerId).click(function () {
-                protect(playerId, player.displayName);
-            });
-        }
-
-        if (player.votedto.voteMethod === 'random') {
-            (0, _jquery2.default)('<span>', {
-                text: '\u3000\u6295\u7968\u5148: ' + player.votedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
-                class: 'voteSpan'
-            }).appendTo('#' + playerId);
-        } else {
-            (0, _jquery2.default)('<span>', {
-                text: '\u3000\u6295\u7968\u5148: ' + player.votedto.displayName,
-                class: 'voteSpan'
-            }).appendTo('#' + playerId);
-        }
-        if (player.runoffElectionVotedto) {
-            if (player.runoffElectionVotedto.voteMethod === 'random') {
-                (0, _jquery2.default)('<span>', {
-                    text: '\u3000\u6C7A\u9078\u6295\u7968: ' + player.runoffElectionVotedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
-                    class: 'voteSpan'
-                }).appendTo('#' + playerId);
-            } else {
-                (0, _jquery2.default)('<span>', {
-                    text: '\u3000\u6C7A\u9078\u6295\u7968: ' + player.runoffElectionVotedto.displayName,
-                    class: 'voteSpan'
-                }).appendTo('#' + playerId);
-            }
-        }
-    };
 
     var _iteratorNormalCompletion9 = true;
     var _didIteratorError9 = false;
@@ -38027,12 +38009,43 @@ function drawPlayersListInNightForHunter(players) {
 
             var _ref18 = _slicedToArray(_ref17, 2);
 
-            var playerId = _ref18[0];
-            var player = _ref18[1];
+            var _playerId8 = _ref18[0];
+            var _player8 = _ref18[1];
 
-            var _ret2 = _loop2(playerId, player);
+            if (_player8.isAlive === true) continue;
 
-            if (_ret2 === 'continue') continue;
+            (0, _jquery2.default)('<div>', {
+                id: _playerId8,
+                text: '\uD83D\uDC80 ' + _player8.displayName,
+                class: 'dead'
+            }).appendTo('#participants');
+
+            if (_player8.votedto) {
+                if (_player8.votedto.voteMethod === 'random') {
+                    (0, _jquery2.default)('<span>', {
+                        text: '\u3000\u6295\u7968\u5148: ' + _player8.votedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
+                        class: 'voteSpan'
+                    }).appendTo('#' + _playerId8);
+                } else {
+                    (0, _jquery2.default)('<span>', {
+                        text: '\u3000\u6295\u7968\u5148: ' + _player8.votedto.displayName,
+                        class: 'voteSpan'
+                    }).appendTo('#' + _playerId8);
+                }
+            }
+            if (_player8.runoffElectionVotedto) {
+                if (_player8.runoffElectionVotedto.voteMethod === 'random') {
+                    (0, _jquery2.default)('<span>', {
+                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + _player8.runoffElectionVotedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
+                        class: 'voteSpan'
+                    }).appendTo('#' + _playerId8);
+                } else {
+                    (0, _jquery2.default)('<span>', {
+                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + _player8.runoffElectionVotedto.displayName,
+                        class: 'voteSpan'
+                    }).appendTo('#' + _playerId8);
+                }
+            }
         }
     } catch (err) {
         _didIteratorError9 = true;
@@ -38048,54 +38061,38 @@ function drawPlayersListInNightForHunter(players) {
             }
         }
     }
+}
+
+function drawPlayersListWithVoteAndWerewolf(players, playersWithoutWerewolfMap) {
+    (0, _jquery2.default)('#participants').empty();
+    (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
+
+    var _loop3 = function _loop3(_playerId9, _player9) {
+        (0, _jquery2.default)('<div>', { id: _playerId9 + 'div' }).appendTo('#participants');
+        (0, _jquery2.default)('<button>', {
+            id: _playerId9,
+            text: _player9.displayName,
+            class: 'alive voteButton'
+        }).appendTo('#' + _playerId9 + 'div');
+        (0, _jquery2.default)("#" + _playerId9).click(function () {
+            werewolfVote(_playerId9, _player9.displayName);
+        });
+    };
 
     var _iteratorNormalCompletion10 = true;
     var _didIteratorError10 = false;
     var _iteratorError10 = undefined;
 
     try {
-        for (var _iterator10 = players[Symbol.iterator](), _step10; !(_iteratorNormalCompletion10 = (_step10 = _iterator10.next()).done); _iteratorNormalCompletion10 = true) {
+        for (var _iterator10 = playersWithoutWerewolfMap[Symbol.iterator](), _step10; !(_iteratorNormalCompletion10 = (_step10 = _iterator10.next()).done); _iteratorNormalCompletion10 = true) {
             var _ref19 = _step10.value;
 
             var _ref20 = _slicedToArray(_ref19, 2);
 
-            var playerId = _ref20[0];
-            var player = _ref20[1];
+            var _playerId9 = _ref20[0];
+            var _player9 = _ref20[1];
 
-            if (player.isAlive === true) continue;
-
-            (0, _jquery2.default)('<div>', {
-                id: playerId,
-                text: '\uD83D\uDC80 ' + player.displayName,
-                class: 'dead'
-            }).appendTo('#participants');
-
-            if (player.votedto) {
-                if (player.votedto.voteMethod === 'random') {
-                    (0, _jquery2.default)('<span>', {
-                        text: '\u3000\u6295\u7968\u5148: ' + player.votedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
-                        class: 'voteSpan'
-                    }).appendTo('#' + playerId);
-                } else {
-                    (0, _jquery2.default)('<span>', {
-                        text: '\u3000\u6295\u7968\u5148: ' + player.votedto.displayName,
-                        class: 'voteSpan'
-                    }).appendTo('#' + playerId);
-                }
-            }
-            if (player.runoffElectionVotedto) {
-                if (player.runoffElectionVotedto.voteMethod === 'random') {
-                    (0, _jquery2.default)('<span>', {
-                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + player.runoffElectionVotedto.displayName + '\uFF08\u30E9\u30F3\u30C0\u30E0\uFF09',
-                        class: 'voteSpan'
-                    }).appendTo('#' + playerId);
-                } else {
-                    (0, _jquery2.default)('<span>', {
-                        text: '\u3000\u6C7A\u9078\u6295\u7968: ' + player.runoffElectionVotedto.displayName,
-                        class: 'voteSpan'
-                    }).appendTo('#' + playerId);
-                }
-            }
+            _loop3(_playerId9, _player9);
         }
     } catch (err) {
         _didIteratorError10 = true;
@@ -38111,38 +38108,28 @@ function drawPlayersListInNightForHunter(players) {
             }
         }
     }
-}
-
-function drawPlayersListWithVoteAndWerewolf(players, playersWithoutWerewolfMap) {
-    (0, _jquery2.default)('#participants').empty();
-    (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
-
-    var _loop3 = function _loop3(playerId, player) {
-        (0, _jquery2.default)('<div>', { id: playerId + 'div' }).appendTo('#participants');
-        (0, _jquery2.default)('<button>', {
-            id: playerId,
-            text: player.displayName,
-            class: 'alive voteButton'
-        }).appendTo('#' + playerId + 'div');
-        (0, _jquery2.default)("#" + playerId).click(function () {
-            werewolfVote(playerId, player.displayName);
-        });
-    };
 
     var _iteratorNormalCompletion11 = true;
     var _didIteratorError11 = false;
     var _iteratorError11 = undefined;
 
     try {
-        for (var _iterator11 = playersWithoutWerewolfMap[Symbol.iterator](), _step11; !(_iteratorNormalCompletion11 = (_step11 = _iterator11.next()).done); _iteratorNormalCompletion11 = true) {
+        for (var _iterator11 = players[Symbol.iterator](), _step11; !(_iteratorNormalCompletion11 = (_step11 = _iterator11.next()).done); _iteratorNormalCompletion11 = true) {
             var _ref21 = _step11.value;
 
             var _ref22 = _slicedToArray(_ref21, 2);
 
-            var playerId = _ref22[0];
-            var player = _ref22[1];
+            var _playerId10 = _ref22[0];
+            var _player10 = _ref22[1];
 
-            _loop3(playerId, player);
+            if (_player10.isAlive === false) continue;
+            if (playersWithoutWerewolfMap.has(_playerId10)) continue;
+
+            (0, _jquery2.default)('<div>', {
+                id: _playerId10,
+                text: _player10.displayName,
+                class: 'alive'
+            }).appendTo('#participants');
         }
     } catch (err) {
         _didIteratorError11 = true;
@@ -38169,16 +38156,14 @@ function drawPlayersListWithVoteAndWerewolf(players, playersWithoutWerewolfMap) 
 
             var _ref24 = _slicedToArray(_ref23, 2);
 
-            var playerId = _ref24[0];
-            var player = _ref24[1];
+            var _playerId11 = _ref24[0];
+            var _player11 = _ref24[1];
 
-            if (player.isAlive === false) continue;
-            if (playersWithoutWerewolfMap.has(playerId)) continue;
-
+            if (_player11.isAlive === true) continue;
             (0, _jquery2.default)('<div>', {
-                id: playerId,
-                text: player.displayName,
-                class: 'alive'
+                id: _playerId11,
+                text: _player11.displayName,
+                class: 'dead'
             }).appendTo('#participants');
         }
     } catch (err) {
@@ -38195,6 +38180,27 @@ function drawPlayersListWithVoteAndWerewolf(players, playersWithoutWerewolfMap) 
             }
         }
     }
+}
+
+function drawMorningVotePlayersList(players) {
+    (0, _jquery2.default)('#participants').empty();
+    (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
+
+    var _loop4 = function _loop4(_playerId12, _player12) {
+        if (_player12.isAlive === false) return 'continue';
+
+        var playerNameText = getPlayerNameWithColor(_playerId12, _player12);
+
+        (0, _jquery2.default)('<div>', { id: _playerId12 + 'div' }).appendTo('#participants');
+        (0, _jquery2.default)('<button>', {
+            id: _playerId12,
+            text: playerNameText,
+            class: 'alive voteButton'
+        }).appendTo('#' + _playerId12 + 'div');
+        (0, _jquery2.default)("#" + _playerId12).click(function () {
+            morningVote(_playerId12, _player12.displayName);
+        });
+    };
 
     var _iteratorNormalCompletion13 = true;
     var _didIteratorError13 = false;
@@ -38206,15 +38212,12 @@ function drawPlayersListWithVoteAndWerewolf(players, playersWithoutWerewolfMap) 
 
             var _ref26 = _slicedToArray(_ref25, 2);
 
-            var _playerId3 = _ref26[0];
-            var _player3 = _ref26[1];
+            var _playerId12 = _ref26[0];
+            var _player12 = _ref26[1];
 
-            if (_player3.isAlive === true) continue;
-            (0, _jquery2.default)('<div>', {
-                id: _playerId3,
-                text: _player3.displayName,
-                class: 'dead'
-            }).appendTo('#participants');
+            var _ret4 = _loop4(_playerId12, _player12);
+
+            if (_ret4 === 'continue') continue;
         }
     } catch (err) {
         _didIteratorError13 = true;
@@ -38230,24 +38233,6 @@ function drawPlayersListWithVoteAndWerewolf(players, playersWithoutWerewolfMap) 
             }
         }
     }
-}
-
-function drawMorningVotePlayersList(players) {
-    (0, _jquery2.default)('#participants').empty();
-    (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
-
-    var _loop4 = function _loop4(playerId, player) {
-        if (player.isAlive === false) return 'continue';
-        (0, _jquery2.default)('<div>', { id: playerId + 'div' }).appendTo('#participants');
-        (0, _jquery2.default)('<button>', {
-            id: playerId,
-            text: player.displayName,
-            class: 'alive voteButton'
-        }).appendTo('#' + playerId + 'div');
-        (0, _jquery2.default)("#" + playerId).click(function () {
-            morningVote(playerId, player.displayName);
-        });
-    };
 
     var _iteratorNormalCompletion14 = true;
     var _didIteratorError14 = false;
@@ -38259,12 +38244,18 @@ function drawMorningVotePlayersList(players) {
 
             var _ref28 = _slicedToArray(_ref27, 2);
 
-            var playerId = _ref28[0];
-            var player = _ref28[1];
+            var _playerId13 = _ref28[0];
+            var _player13 = _ref28[1];
 
-            var _ret4 = _loop4(playerId, player);
+            if (_player13.isAlive === true) continue;
 
-            if (_ret4 === 'continue') continue;
+            var _playerNameText7 = getPlayerNameWithColor(_playerId13, _player13);
+
+            (0, _jquery2.default)('<div>', {
+                id: _playerId13,
+                text: _playerNameText7,
+                class: 'dead'
+            }).appendTo('#participants');
         }
     } catch (err) {
         _didIteratorError14 = true;
@@ -38277,41 +38268,6 @@ function drawMorningVotePlayersList(players) {
         } finally {
             if (_didIteratorError14) {
                 throw _iteratorError14;
-            }
-        }
-    }
-
-    var _iteratorNormalCompletion15 = true;
-    var _didIteratorError15 = false;
-    var _iteratorError15 = undefined;
-
-    try {
-        for (var _iterator15 = players[Symbol.iterator](), _step15; !(_iteratorNormalCompletion15 = (_step15 = _iterator15.next()).done); _iteratorNormalCompletion15 = true) {
-            var _ref29 = _step15.value;
-
-            var _ref30 = _slicedToArray(_ref29, 2);
-
-            var playerId = _ref30[0];
-            var player = _ref30[1];
-
-            if (player.isAlive === true) continue;
-            (0, _jquery2.default)('<div>', {
-                id: playerId,
-                text: player.displayName,
-                class: 'dead'
-            }).appendTo('#participants');
-        }
-    } catch (err) {
-        _didIteratorError15 = true;
-        _iteratorError15 = err;
-    } finally {
-        try {
-            if (!_iteratorNormalCompletion15 && _iterator15.return) {
-                _iterator15.return();
-            }
-        } finally {
-            if (_didIteratorError15) {
-                throw _iteratorError15;
             }
         }
     }
@@ -38358,10 +38314,13 @@ function drawRunoffElectionPlayersList(players, suspendedPlayers) {
     (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
 
     var _loop5 = function _loop5(suspendedPlayerId, suspendedPlayer) {
+
+        var playerNameText = getPlayerNameWithColor(playerId, player);
+
         (0, _jquery2.default)('<div>', { id: suspendedPlayerId + 'div' }).appendTo('#participants');
         (0, _jquery2.default)('<button>', {
             id: suspendedPlayerId,
-            text: suspendedPlayer.displayName,
+            text: playerNameText,
             class: 'alive voteButton'
         }).appendTo('#' + suspendedPlayerId + 'div');
         (0, _jquery2.default)("#" + suspendedPlayerId).click(function () {
@@ -38369,20 +38328,59 @@ function drawRunoffElectionPlayersList(players, suspendedPlayers) {
         });
     };
 
+    var _iteratorNormalCompletion15 = true;
+    var _didIteratorError15 = false;
+    var _iteratorError15 = undefined;
+
+    try {
+        for (var _iterator15 = suspendedPlayers[Symbol.iterator](), _step15; !(_iteratorNormalCompletion15 = (_step15 = _iterator15.next()).done); _iteratorNormalCompletion15 = true) {
+            var _ref29 = _step15.value;
+
+            var _ref30 = _slicedToArray(_ref29, 2);
+
+            var suspendedPlayerId = _ref30[0];
+            var suspendedPlayer = _ref30[1];
+
+            _loop5(suspendedPlayerId, suspendedPlayer);
+        }
+    } catch (err) {
+        _didIteratorError15 = true;
+        _iteratorError15 = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion15 && _iterator15.return) {
+                _iterator15.return();
+            }
+        } finally {
+            if (_didIteratorError15) {
+                throw _iteratorError15;
+            }
+        }
+    }
+
     var _iteratorNormalCompletion16 = true;
     var _didIteratorError16 = false;
     var _iteratorError16 = undefined;
 
     try {
-        for (var _iterator16 = suspendedPlayers[Symbol.iterator](), _step16; !(_iteratorNormalCompletion16 = (_step16 = _iterator16.next()).done); _iteratorNormalCompletion16 = true) {
+        for (var _iterator16 = players[Symbol.iterator](), _step16; !(_iteratorNormalCompletion16 = (_step16 = _iterator16.next()).done); _iteratorNormalCompletion16 = true) {
             var _ref31 = _step16.value;
 
             var _ref32 = _slicedToArray(_ref31, 2);
 
-            var suspendedPlayerId = _ref32[0];
-            var suspendedPlayer = _ref32[1];
+            var _playerId14 = _ref32[0];
+            var _player14 = _ref32[1];
 
-            _loop5(suspendedPlayerId, suspendedPlayer);
+            if (_player14.isAlive === false) continue;
+            if (suspendedPlayers.has(_playerId14)) continue;
+
+            var _playerNameText8 = getPlayerNameWithColor(_playerId14, _player14);
+
+            (0, _jquery2.default)('<div>', {
+                id: _playerId14,
+                text: _playerNameText8,
+                class: 'alive'
+            }).appendTo('#participants');
         }
     } catch (err) {
         _didIteratorError16 = true;
@@ -38409,16 +38407,25 @@ function drawRunoffElectionPlayersList(players, suspendedPlayers) {
 
             var _ref34 = _slicedToArray(_ref33, 2);
 
-            var playerId = _ref34[0];
-            var player = _ref34[1];
+            var _playerId15 = _ref34[0];
+            var _player15 = _ref34[1];
 
-            if (player.isAlive === false) continue;
-            if (suspendedPlayers.has(playerId)) continue;
+            if (_player15.isAlive === true) continue;
+
+            var _playerNameText9 = '\uD83D\uDC80' + _player15.displayName;
+            if (clientObj.resultsOfFortuneTellingMap.has(_playerId15)) {
+                var color = clientObj.resultsOfFortuneTellingMap.get(_playerId15);
+                if (color === '白') {
+                    _playerNameText9 = '⚪' + _playerNameText9;
+                } else if (color === '黒') {
+                    _playerNameText9 = '⚫' + _playerNameText9;
+                }
+            }
 
             (0, _jquery2.default)('<div>', {
-                id: playerId,
-                text: player.displayName,
-                class: 'alive'
+                id: _playerId15,
+                text: _playerNameText9,
+                class: 'dead'
             }).appendTo('#participants');
         }
     } catch (err) {
@@ -38432,42 +38439,6 @@ function drawRunoffElectionPlayersList(players, suspendedPlayers) {
         } finally {
             if (_didIteratorError17) {
                 throw _iteratorError17;
-            }
-        }
-    }
-
-    var _iteratorNormalCompletion18 = true;
-    var _didIteratorError18 = false;
-    var _iteratorError18 = undefined;
-
-    try {
-        for (var _iterator18 = players[Symbol.iterator](), _step18; !(_iteratorNormalCompletion18 = (_step18 = _iterator18.next()).done); _iteratorNormalCompletion18 = true) {
-            var _ref35 = _step18.value;
-
-            var _ref36 = _slicedToArray(_ref35, 2);
-
-            var _playerId4 = _ref36[0];
-            var _player4 = _ref36[1];
-
-            if (_player4.isAlive === true) continue;
-
-            (0, _jquery2.default)('<div>', {
-                id: _playerId4,
-                text: _player4.displayName,
-                class: 'dead'
-            }).appendTo('#participants');
-        }
-    } catch (err) {
-        _didIteratorError18 = true;
-        _iteratorError18 = err;
-    } finally {
-        try {
-            if (!_iteratorNormalCompletion18 && _iterator18.return) {
-                _iterator18.return();
-            }
-        } finally {
-            if (_didIteratorError18) {
-                throw _iteratorError18;
             }
         }
     }
@@ -38618,33 +38589,33 @@ function displayGaming(day, time, nextEventTime) {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
         ctx.fillText('Day ' + day + '  \u7D50\u679C\u767A\u8868 ' + remainTimeText, 10, 22);
-        var _iteratorNormalCompletion19 = true;
-        var _didIteratorError19 = false;
-        var _iteratorError19 = undefined;
+        var _iteratorNormalCompletion18 = true;
+        var _didIteratorError18 = false;
+        var _iteratorError18 = undefined;
 
         try {
-            for (var _iterator19 = clientObj.suspendedPlayers[Symbol.iterator](), _step19; !(_iteratorNormalCompletion19 = (_step19 = _iterator19.next()).done); _iteratorNormalCompletion19 = true) {
-                var _ref37 = _step19.value;
+            for (var _iterator18 = clientObj.suspendedPlayers[Symbol.iterator](), _step18; !(_iteratorNormalCompletion18 = (_step18 = _iterator18.next()).done); _iteratorNormalCompletion18 = true) {
+                var _ref35 = _step18.value;
 
-                var _ref38 = _slicedToArray(_ref37, 2),
-                    playerId = _ref38[0],
-                    votedPlayer = _ref38[1];
+                var _ref36 = _slicedToArray(_ref35, 2),
+                    playerId = _ref36[0],
+                    votedPlayer = _ref36[1];
 
                 ctx.font = "18px 'ＭＳ Ｐゴシック'";
                 ctx.fillStyle = "black";
                 ctx.fillText(votedPlayer.displayName + ' \u3055\u3093\u306E\u51E6\u5211\u304C\u6C7A\u5B9A\u3044\u305F\u3057\u307E\u3057\u305F\u3002', 10, 120);
             }
         } catch (err) {
-            _didIteratorError19 = true;
-            _iteratorError19 = err;
+            _didIteratorError18 = true;
+            _iteratorError18 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion19 && _iterator19.return) {
-                    _iterator19.return();
+                if (!_iteratorNormalCompletion18 && _iterator18.return) {
+                    _iterator18.return();
                 }
             } finally {
-                if (_didIteratorError19) {
-                    throw _iteratorError19;
+                if (_didIteratorError18) {
+                    throw _iteratorError18;
                 }
             }
         }
@@ -38674,33 +38645,33 @@ function displayGaming(day, time, nextEventTime) {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
         ctx.fillText('Day ' + day + '  \u6C7A\u6226\u6295\u7968\u7D50\u679C\u767A\u8868  ' + remainTimeText, 10, 22);
-        var _iteratorNormalCompletion20 = true;
-        var _didIteratorError20 = false;
-        var _iteratorError20 = undefined;
+        var _iteratorNormalCompletion19 = true;
+        var _didIteratorError19 = false;
+        var _iteratorError19 = undefined;
 
         try {
-            for (var _iterator20 = clientObj.suspendedPlayers[Symbol.iterator](), _step20; !(_iteratorNormalCompletion20 = (_step20 = _iterator20.next()).done); _iteratorNormalCompletion20 = true) {
-                var _ref39 = _step20.value;
+            for (var _iterator19 = clientObj.suspendedPlayers[Symbol.iterator](), _step19; !(_iteratorNormalCompletion19 = (_step19 = _iterator19.next()).done); _iteratorNormalCompletion19 = true) {
+                var _ref37 = _step19.value;
 
-                var _ref40 = _slicedToArray(_ref39, 2),
-                    playerId = _ref40[0],
-                    votedPlayer = _ref40[1];
+                var _ref38 = _slicedToArray(_ref37, 2),
+                    playerId = _ref38[0],
+                    votedPlayer = _ref38[1];
 
                 ctx.font = "18px 'ＭＳ Ｐゴシック'";
                 ctx.fillStyle = "black";
                 ctx.fillText(votedPlayer.displayName + ' \u3055\u3093\u306E\u51E6\u5211\u304C\u6C7A\u5B9A\u3044\u305F\u3057\u307E\u3057\u305F\u3002', 10, 120);
             }
         } catch (err) {
-            _didIteratorError20 = true;
-            _iteratorError20 = err;
+            _didIteratorError19 = true;
+            _iteratorError19 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion20 && _iterator20.return) {
-                    _iterator20.return();
+                if (!_iteratorNormalCompletion19 && _iterator19.return) {
+                    _iterator19.return();
                 }
             } finally {
-                if (_didIteratorError20) {
-                    throw _iteratorError20;
+                if (_didIteratorError19) {
+                    throw _iteratorError19;
                 }
             }
         }
@@ -38744,32 +38715,32 @@ function displayGaming(day, time, nextEventTime) {
         } else {
             ctx.fillText('\u6628\u6669\u306E\u72A0\u7272\u8005\u306F', 40, 70);
             var positionY = 95;
-            var _iteratorNormalCompletion21 = true;
-            var _didIteratorError21 = false;
-            var _iteratorError21 = undefined;
+            var _iteratorNormalCompletion20 = true;
+            var _didIteratorError20 = false;
+            var _iteratorError20 = undefined;
 
             try {
-                for (var _iterator21 = clientObj.killedPlayersMap[Symbol.iterator](), _step21; !(_iteratorNormalCompletion21 = (_step21 = _iterator21.next()).done); _iteratorNormalCompletion21 = true) {
-                    var _ref41 = _step21.value;
+                for (var _iterator20 = clientObj.killedPlayersMap[Symbol.iterator](), _step20; !(_iteratorNormalCompletion20 = (_step20 = _iterator20.next()).done); _iteratorNormalCompletion20 = true) {
+                    var _ref39 = _step20.value;
 
-                    var _ref42 = _slicedToArray(_ref41, 2),
-                        killedPlayerId = _ref42[0],
-                        killedPlayer = _ref42[1];
+                    var _ref40 = _slicedToArray(_ref39, 2),
+                        killedPlayerId = _ref40[0],
+                        killedPlayer = _ref40[1];
 
                     ctx.fillText(killedPlayer.displayName, 20, positionY);
                     positionY += 25;
                 }
             } catch (err) {
-                _didIteratorError21 = true;
-                _iteratorError21 = err;
+                _didIteratorError20 = true;
+                _iteratorError20 = err;
             } finally {
                 try {
-                    if (!_iteratorNormalCompletion21 && _iterator21.return) {
-                        _iterator21.return();
+                    if (!_iteratorNormalCompletion20 && _iterator20.return) {
+                        _iterator20.return();
                     }
                 } finally {
-                    if (_didIteratorError21) {
-                        throw _iteratorError21;
+                    if (_didIteratorError20) {
+                        throw _iteratorError20;
                     }
                 }
             }

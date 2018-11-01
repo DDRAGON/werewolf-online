@@ -316,6 +316,7 @@ function changeEvent(tableId) {
                 playersList: getPlayersList(tableId),
                 killedPlayersMap: Array.from(publicDataOfKilledPlayersMap)
             });
+            sendDeadPlayersColorToPsychic(table); // 霊能者に死者の情報を送る
 
             setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
             break;
@@ -335,13 +336,6 @@ function night(table, nextEventTime) {
             player.werewolfVotedto = null;
             gameObj.tableSocketsMap.get(table.tableId).to(socketId).emit('Hi werewolf, night has come', {
                 playersWithoutWerewolfMap: Array.from(playersWithoutWerewolfMap),
-                time: table.time,
-                nextEventTime
-            });
-        } else if (player.role === '霊能者') {
-            const deadPlayersColorMap = getDeadPlayersColor(table.tableId);
-            gameObj.tableSocketsMap.get(table.tableId).to(socketId).emit('Hi goast, night has come', {
-                deadPlayersColorMap: Array.from(deadPlayersColorMap),
                 time: table.time,
                 nextEventTime
             });
@@ -366,6 +360,7 @@ function night(table, nextEventTime) {
             });
         }
     }
+    sendDeadPlayersColorToPsychic(table); // 霊能者に死者の情報を送る
 }
 
 function makePlayersWithoutWerewolf(table) {
@@ -381,15 +376,13 @@ function makePlayersWithoutWerewolf(table) {
     return playersWithoutWerewolfMap;
 }
 
-function getDeadPlayersColor(tableId) {
+function getDeadPlayersColor(table) {
     const deadPlayersColorMap = new Map();
-    const publicPlayersMap = new Map(getPlayersList(tableId));
-    console.log(tables[tableId].players);
+    const publicPlayersMap = new Map(getPlayersList(table.tableId));
+    const playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
     for (let [playerId, player] of publicPlayersMap) {
         if (player.isAlive === false) {
-            console.log(playerId);
-            console.log(tables[tableId].players.get(playerId));
-            const color = getColorFromRole(tables[tableId].players.get(playerId).role);
+            const color = getColorFromRole(playersAndAIsMap.get(playerId).role);
             deadPlayersColorMap.set(playerId, color);
         }
     }
@@ -722,10 +715,11 @@ function fortuneTellingAddingUp(table, playersAndAIsMap, killedPlayersMap) {
     if (!table.tellFortunesto) return killedPlayersMap; // 占っていなかったら終了
 
     // 妖狐は占われたら死ぬ。
-    const tolledPlayer = table.players.get(table.tellFortunesto.playerId);
+    const tolledPlayer = playersAndAIsMap.get(table.tellFortunesto.playerId);
     if (tolledPlayer.role === '妖狐') {
         tolledPlayer.isAlive = false;
         killedPlayersMap.set(tolledPlayer.playerId, tolledPlayer);
+
     }
 
     return killedPlayersMap;
@@ -737,6 +731,17 @@ function suspendPlayer(tableId, suspendedPlayersMap) {
 
     for ([suspendedPlayerId, suspendedPlayer] of suspendedPlayersMap) {
         playersAndAIsMap.get(suspendedPlayerId).isAlive = false;
+    }
+}
+
+function sendDeadPlayersColorToPsychic(table) {
+    for (let [playerId, player] of table.players) {
+        const socketId = player.socketId;
+
+        if (player.role === '霊能者' && player.isAlive === true) {
+            const deadPlayersColorMap = getDeadPlayersColor(table);
+            gameObj.tableSocketsMap.get(table.tableId).to(socketId).emit('Hi psychic, give you ghost data', Array.from(deadPlayersColorMap));
+        }
     }
 }
 
@@ -770,9 +775,9 @@ function addRoles(tableId) {
     // デバッグ用 役職コントロール
     for ([socketId, player] of gameObj.tables[tableId].players) {
         for ([aiId, ai] of gameObj.tables[tableId].AIs) {
-            if (ai.role === '霊能者') {
+            if (ai.role === '占い師') {
                 ai.role = player.role;
-                player.role = '霊能者';
+                player.role = '占い師';
             }
         }
     }
