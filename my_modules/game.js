@@ -773,11 +773,12 @@ function addRoles(tableId) {
     }
 
     // デバッグ用 役職コントロール
+    const changeRole = '占い師';
     for ([socketId, player] of gameObj.tables[tableId].players) {
         for ([aiId, ai] of gameObj.tables[tableId].AIs) {
-            if (ai.role === '占い師') {
+            if (ai.role === changeRole) {
                 ai.role = player.role;
-                player.role = '占い師';
+                player.role = changeRole;
             }
         }
     }

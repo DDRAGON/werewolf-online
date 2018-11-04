@@ -12,6 +12,7 @@ const clientObj = {
     participantsElement: $('#participants'),
     players: new Map(),
     resultsOfFortuneTellingMap: new Map(),
+    resultsOfFortuneTellingByDayMap: new Map(),
     deadPlayersColorMap: new Map(),
     killedPlayersMap: new Map(),
     chatAutoScroll: true,
@@ -183,7 +184,8 @@ socket.on('Hi werewolf, night has come', (data) => {
 });
 
 socket.on('result of fortune telling', (data) => {
-    clientObj.resultsOfFortuneTellingMap.set(clientObj.day, data);
+    clientObj.resultsOfFortuneTellingMap.set(data.playerId, data);
+    clientObj.resultsOfFortuneTellingByDayMap.set(clientObj.day, data);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
 });
 
@@ -235,7 +237,7 @@ function getPlayerNameWithColor(playerId, player) {
     }
 
     if (clientObj.resultsOfFortuneTellingMap.has(playerId)) {
-        color = clientObj.resultsOfFortuneTellingMap.get(playerId);
+        color = clientObj.resultsOfFortuneTellingMap.get(playerId).color;
     } else if (player.isAlive === false && clientObj.deadPlayersColorMap.has(playerId)) {
         color = clientObj.deadPlayersColorMap.get(playerId);
     }
@@ -252,8 +254,6 @@ function getPlayerNameWithColor(playerId, player) {
 function drawPlayersListWithVote(players) {
     $('#participants').empty();
     $('<div>', {text: '参加者一覧'}).appendTo('#participants');
-
-    players = setColors(players);
 
     for (let [playerId, player] of players) {
         if (player.isAlive === false) continue;
@@ -364,24 +364,24 @@ function drawPlayersListInNightForFortuneTeller(playersForFortuneTellerMap) {
             $('<span>', {
                 text: `　投票先: ${player.votedto.displayName}（ランダム）`,
                 class: 'voteSpan'
-            }).appendTo(`#${playerId}`);
+            }).appendTo(`#${playerId}div`);
         } else {
             $('<span>', {
                 text: `　投票先: ${player.votedto.displayName}`,
                 class: 'voteSpan'
-            }).appendTo(`#${playerId}`);
+            }).appendTo(`#${playerId}div`);
         }
         if (player.runoffElectionVotedto) {
             if (player.runoffElectionVotedto.voteMethod === 'random') {
                 $('<span>', {
                     text: `　決選投票: ${player.runoffElectionVotedto.displayName}（ランダム）`,
                     class: 'voteSpan'
-                }).appendTo(`#${playerId}`);
+                }).appendTo(`#${playerId}div`);
             } else {
                 $('<span>', {
                     text: `　決選投票: ${player.runoffElectionVotedto.displayName}`,
                     class: 'voteSpan'
-                }).appendTo(`#${playerId}`);
+                }).appendTo(`#${playerId}div`);
             }
         }
     }
@@ -626,7 +626,7 @@ function drawRunoffElectionPlayersList(players, suspendedPlayers) {
 
     for (let [suspendedPlayerId, suspendedPlayer] of suspendedPlayers) {
 
-        const playerNameText = getPlayerNameWithColor(playerId, player);
+        const playerNameText = getPlayerNameWithColor(suspendedPlayerId, suspendedPlayer);
         
         $('<div>', {id: `${suspendedPlayerId}div`}).appendTo('#participants');
         $('<button>', {
@@ -810,11 +810,13 @@ function displayGaming(day, time, nextEventTime) {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         ctx.fillStyle = "#FFD700";
-        ctx.arc(100, 100, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
+        ctx.beginPath();
+        ctx.arc(400, 50, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
         ctx.fill();
 
         ctx.fillStyle = "midnightblue";
-        ctx.arc(80, 80, 20, 0 * Math.PI / 180, 360 * Math.PI / 180);
+        ctx.beginPath();
+        ctx.arc(380, 50, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
         ctx.fill();
 
     } else if (time === 'nightResultMorning') {
@@ -825,7 +827,7 @@ function displayGaming(day, time, nextEventTime) {
     if (time === 'morning') {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
-        ctx.fillText(`Day ${day}  朝  朝会議の残り時間 ${remainTimeText}`, 10, 22);
+        ctx.fillText(`Day ${day}  昼  会議の残り時間 ${remainTimeText}`, 10, 22);
     }
 
     if (time === 'morningVote') {
@@ -890,13 +892,13 @@ function displayGaming(day, time, nextEventTime) {
             ctx.fillText(`「${clientObj.werewolfVoteName}」に投票`, 10, 120);
         }
 
-        if (!clientObj.resultsOfFortuneTellingMap.has(clientObj.day)) {
+        if (!clientObj.resultsOfFortuneTellingByDayMap.has(clientObj.day)) {
             if (clientObj.tellFortunesName) { // 占い先が決まったなら（占い師の場合）
                 ctx.font = "32px 'ＭＳ Ｐゴシック'";
                 ctx.fillText(`「${clientObj.tellFortunesName}」を占っています。`, 10, 120);
             }
         } else { // 占い結果がでたなら
-            const resultOfFortuneTelling = clientObj.resultsOfFortuneTellingMap.get(clientObj.day);
+            const resultOfFortuneTelling = clientObj.resultsOfFortuneTellingByDayMap.get(clientObj.day);
 
             ctx.font = "36px 'ＭＳ Ｐゴシック'";
             ctx.fillText(`「${resultOfFortuneTelling.displayName}」を占った結果は`, 10, 120);
@@ -907,23 +909,26 @@ function displayGaming(day, time, nextEventTime) {
     if (time === 'nightResultMorning') {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
-        ctx.fillText(`Day ${day} 早朝  残り時間 ${remainTimeText}`, 10, 22);
+        ctx.fillText(`Day ${day} 朝  残り時間 ${remainTimeText}`, 10, 22);
         ctx.font = "18px 'ＭＳ Ｐゴシック'";
         ctx.fillText(`おはようございます。`, 100, 45);
+        ctx.font = "16px 'ＭＳ Ｐゴシック'";
         if (clientObj.killedPlayersMap.size === 0) {
             ctx.fillText(`昨晩の犠牲者はいませんでした。`, 40, 70);
         } else {
             ctx.fillText(`昨晩の犠牲者は`, 40, 70);
-            let positionY = 95;
+            let positionY = 90;
+            ctx.font = "14px 'ＭＳ Ｐゴシック'";
             for ([killedPlayerId, killedPlayer] of clientObj.killedPlayersMap) {
-                ctx.fillText(killedPlayer.displayName, 20, positionY);
-                positionY += 25;
+                ctx.fillText(killedPlayer.displayName, 10, positionY);
+                positionY += 20;
             }
+            ctx.font = "16px 'ＭＳ Ｐゴシック'";
             ctx.fillText(`でした。`, 40, positionY);
         }
 
-        if (clientObj.resultsOfFortuneTellingMap.has(clientObj.day)) {
-            const resultOfFortuneTelling = clientObj.resultsOfFortuneTellingMap.get(clientObj.day);
+        if (clientObj.resultsOfFortuneTellingByDayMap.has(clientObj.day)) {
+            const resultOfFortuneTelling = clientObj.resultsOfFortuneTellingByDayMap.get(clientObj.day);
             ctx.font = "12px 'ＭＳ Ｐゴシック'";
             ctx.fillText(`占い師さん、${resultOfFortuneTelling.displayName} は ${resultOfFortuneTelling.color} でした。`, 5, 155);
         }
