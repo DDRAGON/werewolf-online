@@ -102,6 +102,15 @@ socket.on('game start', (data) => {
     clientObj.tableState = data.tableState;
     clientObj.nextEventTime = data.nextEventTime;
     drawPlayersList(clientObj.players);
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+});
+
+socket.on('morning start', (data) => {
+    clientObj.players = new Map(data.playersList);
+    clientObj.time = data.time;
+    clientObj.nextEventTime = data.nextEventTime;
+    drawPlayersList(clientObj.players);
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
 });
 
 socket.on('morning vote start', (data) => {
@@ -191,6 +200,7 @@ socket.on('result of fortune telling', (data) => {
 
 socket.on('night result', (data) => {
     clientObj.time = data.time;
+    clientObj.day = data.day;
     clientObj.nextEventTime = data.nextEventTime;
     clientObj.players = new Map(data.playersList);
     clientObj.killedPlayersMap = new Map(data.killedPlayersMap);
@@ -801,6 +811,7 @@ function displayGaming(day, time, nextEventTime) {
         ctx.fillStyle = "lightcyan";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "orangered";
+        ctx.beginPath();
         ctx.arc(100, 100, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
         ctx.fill();
 
@@ -831,6 +842,7 @@ function displayGaming(day, time, nextEventTime) {
     }
 
     if (time === 'morningVote') {
+        console.log(remainTimeText);
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
         ctx.fillText(`Day ${day} 投票の残り時間 ${remainTimeText}`, 10, 22);

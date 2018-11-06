@@ -216,7 +216,8 @@ function changeEvent(tableId) {
 
         case 'morningVote':
             playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
-            suspendedPlayersMap = voteAddingUp(tableId, playersAndAIsMap);
+            const playersOnlyAliveMap = makePlayersOnlyAlive(table);
+            suspendedPlayersMap = voteAddingUp(tableId, playersOnlyAliveMap);
             table.suspendedPlayers = suspendedPlayersMap;
 
             if (suspendedPlayersMap.size === 1) {
@@ -305,6 +306,7 @@ function changeEvent(tableId) {
             }
 
             table.time = 'nightResultMorning';
+            table.day += 1;
 
             //dt.setMinutes(dt.getMinutes() + gameObj.morningMinutes); // 夜の結果発表時間は15秒
             dt.setSeconds(dt.getSeconds() + 15);
@@ -312,6 +314,7 @@ function changeEvent(tableId) {
 
             gameObj.tableSocketsMap.get(tableId).emit('night result', {
                 time: table.time,
+                day: table.day,
                 nextEventTime: table.nextEventTime,
                 playersList: getPlayersList(tableId),
                 killedPlayersMap: Array.from(publicDataOfKilledPlayersMap)
@@ -323,6 +326,19 @@ function changeEvent(tableId) {
 
         case 'nightResultMorning':
             table.time = 'morning';
+
+            //dt.setMinutes(dt.getMinutes() + gameObj.morningMinutes); // 朝の時間は５分
+            dt.setSeconds(dt.getSeconds() + 10);
+            table.nextEventTime = dt.getTime();
+
+            gameObj.tableSocketsMap.get(tableId).emit('morning start', {
+                tableState: table.tableState,
+                time: table.time,
+                nextEventTime: table.nextEventTime,
+                playersList: getPlayersList(tableId)
+            });
+
+            setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
             break;
     }
 }
@@ -361,6 +377,19 @@ function night(table, nextEventTime) {
         }
     }
     sendDeadPlayersColorToPsychic(table); // 霊能者に死者の情報を送る
+}
+
+function makePlayersOnlyAlive(table) {
+    const playersOnlyAliveMap = new Map();
+    const playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
+
+    for (let [playerId, player] of playersAndAIsMap) {
+        if (player.isAlive === true) {
+            playersOnlyAliveMap.set(playerId, player);
+        }
+    }
+
+    return playersOnlyAliveMap;
 }
 
 function makePlayersWithoutWerewolf(table) {
@@ -565,6 +594,8 @@ function voteAddingUp(tableId, candidatesMap) {
     const votedPlayers = new Map();
     let mostVote = 0;
     let mostVotedPlayers = new Map();
+    console.log(`tableId = ${tableId}`);
+    console.log(candidatesMap);
 
     for ([playerId, player] of playersAndAIsMap) {
 
@@ -773,7 +804,7 @@ function addRoles(tableId) {
     }
 
     // デバッグ用 役職コントロール
-    const changeRole = '占い師';
+    const changeRole = '霊能者';
     for ([socketId, player] of gameObj.tables[tableId].players) {
         for ([aiId, ai] of gameObj.tables[tableId].AIs) {
             if (ai.role === changeRole) {
