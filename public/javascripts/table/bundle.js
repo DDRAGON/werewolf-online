@@ -37315,7 +37315,8 @@ var clientObj = {
     deadPlayersColorMap: new Map(),
     killedPlayersMap: new Map(),
     chatAutoScroll: true,
-    privateChatAutoScroll: true
+    privateChatAutoScroll: true,
+    myIsAlive: true
 };
 
 var socketQueryParameters = 'displayName=' + clientObj.displayName + '&thumbUrl=' + clientObj.thumbUrl + '&twitterId=' + clientObj.twitterId;
@@ -37480,8 +37481,11 @@ socket.on('runoff election result', function (data) {
 socket.on('night has come', function (data) {
     clientObj.time = data.time;
     clientObj.nextEventTime = data.nextEventTime;
+    clientObj.players = new Map(data.playersList);
     drawPlayersListWithVote(clientObj.players);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    disableMainChat();
+    checkIfImDead(clientObj.players);
 });
 
 socket.on('Hi fortune teller, night has come', function (data) {
@@ -37491,14 +37495,19 @@ socket.on('Hi fortune teller, night has come', function (data) {
     clientObj.tellFortunesName = null; // 投票のリセット
     drawPlayersListInNightForFortuneTeller(clientObj.players);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    disableMainChat();
+    checkIfImDead(clientObj.players);
 });
 
 socket.on('Hi hunter, night has come', function (data) {
     clientObj.time = data.time;
     clientObj.nextEventTime = data.nextEventTime;
+    clientObj.players = new Map(data.playersList);
     clientObj.protectName = null; // 守り先のリセット
     drawPlayersListInNightForHunter(clientObj.players);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    disableMainChat();
+    checkIfImDead(clientObj.players);
 });
 
 socket.on('Hi psychic, give you ghost data', function (deadPlayersColorArray) {
@@ -37513,10 +37522,13 @@ socket.on('Hi psychic, give you ghost data', function (deadPlayersColorArray) {
 socket.on('Hi werewolf, night has come', function (data) {
     clientObj.time = data.time;
     clientObj.nextEventTime = data.nextEventTime;
+    clientObj.players = new Map(data.playersList);
     clientObj.werewolfVoteName = null; // 投票のリセット
     var playersWithoutWerewolfMap = new Map(data.playersWithoutWerewolfMap);
     drawPlayersListWithVoteAndWerewolf(clientObj.players, playersWithoutWerewolfMap);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    disableMainChat();
+    checkIfImDead(clientObj.players);
 });
 
 socket.on('result of fortune telling', function (data) {
@@ -37533,6 +37545,8 @@ socket.on('night result', function (data) {
     clientObj.killedPlayersMap = new Map(data.killedPlayersMap);
     drawPlayersList(clientObj.players);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    enableMainChat();
+    checkIfImDead(clientObj.players);
 });
 
 function drawPlayersList(players) {
@@ -38078,6 +38092,7 @@ function drawPlayersListWithVoteAndWerewolf(players, playersWithoutWerewolfMap) 
     (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
 
     var _loop3 = function _loop3(playerId, player) {
+
         (0, _jquery2.default)('<div>', { id: playerId + 'div' }).appendTo('#participants');
         (0, _jquery2.default)('<button>', {
             id: playerId,
@@ -38199,17 +38214,26 @@ function drawMorningVotePlayersList(players) {
     var _loop4 = function _loop4(playerId, player) {
         if (player.isAlive === false) return 'continue';
 
-        var playerNameText = getPlayerNameWithColor(playerId, player);
+        if (playerId === clientObj.myPlayerId) {
 
-        (0, _jquery2.default)('<div>', { id: playerId + 'div' }).appendTo('#participants');
-        (0, _jquery2.default)('<button>', {
-            id: playerId,
-            text: playerNameText,
-            class: 'alive voteButton'
-        }).appendTo('#' + playerId + 'div');
-        (0, _jquery2.default)("#" + playerId).click(function () {
-            morningVote(playerId, player.displayName);
-        });
+            (0, _jquery2.default)('<div>', {
+                id: playerId,
+                text: player.displayName,
+                class: 'alive'
+            }).appendTo('#participants');
+        } else {
+
+            var _playerNameText8 = getPlayerNameWithColor(playerId, player);
+            (0, _jquery2.default)('<div>', { id: playerId + 'div' }).appendTo('#participants');
+            (0, _jquery2.default)('<button>', {
+                id: playerId,
+                text: _playerNameText8,
+                class: 'alive voteButton'
+            }).appendTo('#' + playerId + 'div');
+            (0, _jquery2.default)("#" + playerId).click(function () {
+                morningVote(playerId, player.displayName);
+            });
+        }
     };
 
     var _iteratorNormalCompletion13 = true;
@@ -38384,11 +38408,11 @@ function drawRunoffElectionPlayersList(players, suspendedPlayers) {
             if (player.isAlive === false) continue;
             if (suspendedPlayers.has(playerId)) continue;
 
-            var _playerNameText8 = getPlayerNameWithColor(playerId, player);
+            var _playerNameText9 = getPlayerNameWithColor(playerId, player);
 
             (0, _jquery2.default)('<div>', {
                 id: playerId,
-                text: _playerNameText8,
+                text: _playerNameText9,
                 class: 'alive'
             }).appendTo('#participants');
         }
@@ -38422,19 +38446,19 @@ function drawRunoffElectionPlayersList(players, suspendedPlayers) {
 
             if (_player4.isAlive === true) continue;
 
-            var _playerNameText9 = '\uD83D\uDC80' + _player4.displayName;
+            var _playerNameText10 = '\uD83D\uDC80' + _player4.displayName;
             if (clientObj.resultsOfFortuneTellingMap.has(_playerId4)) {
                 var color = clientObj.resultsOfFortuneTellingMap.get(_playerId4);
                 if (color === '白') {
-                    _playerNameText9 = '⚪' + _playerNameText9;
+                    _playerNameText10 = '⚪' + _playerNameText10;
                 } else if (color === '黒') {
-                    _playerNameText9 = '⚫' + _playerNameText9;
+                    _playerNameText10 = '⚫' + _playerNameText10;
                 }
             }
 
             (0, _jquery2.default)('<div>', {
                 id: _playerId4,
-                text: _playerNameText9,
+                text: _playerNameText10,
                 class: 'dead'
             }).appendTo('#participants');
         }
@@ -38771,6 +38795,62 @@ function displayGaming(day, time, nextEventTime) {
             ctx.fillText('\u5360\u3044\u5E2B\u3055\u3093\u3001' + _resultOfFortuneTelling.displayName + ' \u306F ' + _resultOfFortuneTelling.color + ' \u3067\u3057\u305F\u3002', 5, 155);
         }
     }
+}
+
+function checkIfImDead(players) {
+    var _iteratorNormalCompletion21 = true;
+    var _didIteratorError21 = false;
+    var _iteratorError21 = undefined;
+
+    try {
+        for (var _iterator21 = players[Symbol.iterator](), _step21; !(_iteratorNormalCompletion21 = (_step21 = _iterator21.next()).done); _iteratorNormalCompletion21 = true) {
+            var _ref41 = _step21.value;
+
+            var _ref42 = _slicedToArray(_ref41, 2);
+
+            var playerId = _ref42[0];
+            var player = _ref42[1];
+
+            if (playerId === clientObj.myPlayerId && player.isAlive === false) {
+                clientObj.myIsAlive = false;
+                (0, _jquery2.default)('#mainChatInput').val(''); // 空にする
+                (0, _jquery2.default)('#mainChatInput').attr('placeholder', '死者は会話ができません。');
+                (0, _jquery2.default)('#mainChatInput').prop('disabled', true);
+                (0, _jquery2.default)('#mainChatButton').fadeOut();
+            }
+        }
+    } catch (err) {
+        _didIteratorError21 = true;
+        _iteratorError21 = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion21 && _iterator21.return) {
+                _iterator21.return();
+            }
+        } finally {
+            if (_didIteratorError21) {
+                throw _iteratorError21;
+            }
+        }
+    }
+}
+
+function disableMainChat() {
+    if (clientObj.myIsAlive === false) return;
+
+    (0, _jquery2.default)('#mainChatInput').val(''); // 空にする
+    (0, _jquery2.default)('#mainChatInput').attr('placeholder', '夜の間はチャットができません。');
+    (0, _jquery2.default)('#mainChatInput').prop('disabled', true);
+    (0, _jquery2.default)('#mainChatButton').fadeOut();
+}
+
+function enableMainChat() {
+    if (clientObj.myIsAlive === false) return;
+
+    (0, _jquery2.default)('#mainChatInput').val(''); // 空にする
+    (0, _jquery2.default)('#mainChatInput').attr('placeholder', '');
+    (0, _jquery2.default)('#mainChatInput').prop('disabled', false);
+    (0, _jquery2.default)('#mainChatButton').show();
 }
 
 function calcRemainTime(distTime) {

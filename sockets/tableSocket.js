@@ -21,8 +21,7 @@ function createTableSocketServer(io, game) {
             rootIo.emit('players list', game.getPlayersList(tableId));
 
             socket.on('chat text', (chatText) => {
-                const chatObj = game.gotChatText(socket.id, tableId, displayName, thumbUrl, chatText);
-                rootIo.emit('new chat', chatObj);
+                game.gotChatText(socket.id, tableId, displayName, thumbUrl, chatText);
             });
 
             socket.on('private chat text', (privateChatText) => {

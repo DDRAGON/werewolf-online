@@ -17,6 +17,7 @@ const clientObj = {
     killedPlayersMap: new Map(),
     chatAutoScroll: true,
     privateChatAutoScroll: true,
+    myIsAlive: true
 };
 
 const socketQueryParameters = `displayName=${clientObj.displayName}&thumbUrl=${clientObj.thumbUrl}&twitterId=${clientObj.twitterId}`;
@@ -153,8 +154,11 @@ socket.on('runoff election result', (data) => {
 socket.on('night has come', (data) => {
     clientObj.time = data.time;
     clientObj.nextEventTime = data.nextEventTime;
+    clientObj.players = new Map(data.playersList);
     drawPlayersListWithVote(clientObj.players);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    disableMainChat();
+    checkIfImDead(clientObj.players);
 });
 
 socket.on('Hi fortune teller, night has come', (data) => {
@@ -164,14 +168,19 @@ socket.on('Hi fortune teller, night has come', (data) => {
     clientObj.tellFortunesName = null; // 投票のリセット
     drawPlayersListInNightForFortuneTeller(clientObj.players);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    disableMainChat();
+    checkIfImDead(clientObj.players);
 });
 
 socket.on('Hi hunter, night has come', (data) => {
     clientObj.time = data.time;
     clientObj.nextEventTime = data.nextEventTime;
+    clientObj.players = new Map(data.playersList);
     clientObj.protectName = null; // 守り先のリセット
     drawPlayersListInNightForHunter(clientObj.players);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    disableMainChat();
+    checkIfImDead(clientObj.players);
 });
 
 socket.on('Hi psychic, give you ghost data', (deadPlayersColorArray) => {
@@ -186,10 +195,13 @@ socket.on('Hi psychic, give you ghost data', (deadPlayersColorArray) => {
 socket.on('Hi werewolf, night has come', (data) => {
     clientObj.time = data.time;
     clientObj.nextEventTime = data.nextEventTime;
+    clientObj.players = new Map(data.playersList);
     clientObj.werewolfVoteName = null; // 投票のリセット
     const playersWithoutWerewolfMap = new Map(data.playersWithoutWerewolfMap);
     drawPlayersListWithVoteAndWerewolf(clientObj.players, playersWithoutWerewolfMap);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    disableMainChat();
+    checkIfImDead(clientObj.players);
 });
 
 socket.on('result of fortune telling', (data) => {
@@ -206,6 +218,8 @@ socket.on('night result', (data) => {
     clientObj.killedPlayersMap = new Map(data.killedPlayersMap);
     drawPlayersList(clientObj.players);
     displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    enableMainChat();
+    checkIfImDead(clientObj.players);
 });
 
 
@@ -531,6 +545,7 @@ function drawPlayersListWithVoteAndWerewolf(players, playersWithoutWerewolfMap) 
     $('<div>', {text: '参加者一覧'}).appendTo('#participants');
 
     for (let [playerId, player] of playersWithoutWerewolfMap) {
+
         $('<div>', {id: `${playerId}div`}).appendTo('#participants');
         $('<button>', {
             id: playerId,
@@ -569,17 +584,28 @@ function drawMorningVotePlayersList(players) {
     for (let [playerId, player] of players) {
         if (player.isAlive === false) continue;
 
-        const playerNameText = getPlayerNameWithColor(playerId, player);
+        if (playerId === clientObj.myPlayerId) {
 
-        $('<div>', {id: `${playerId}div`}).appendTo('#participants');
-        $('<button>', {
-            id: playerId,
-            text: playerNameText,
-            class: 'alive voteButton'
-        }).appendTo(`#${playerId}div`);
-        $("#" + playerId).click(function(){
-            morningVote(playerId, player.displayName);
-        });
+            $('<div>', {
+                id: playerId,
+                text: player.displayName,
+                class: 'alive'
+            }).appendTo('#participants');
+
+        } else {
+
+            const playerNameText = getPlayerNameWithColor(playerId, player);
+            $('<div>', {id: `${playerId}div`}).appendTo('#participants');
+            $('<button>', {
+                id: playerId,
+                text: playerNameText,
+                class: 'alive voteButton'
+            }).appendTo(`#${playerId}div`);
+            $("#" + playerId).click(function () {
+                morningVote(playerId, player.displayName);
+            });
+
+        }
     }
     for (let [playerId, player] of players) {
         if (player.isAlive === true) continue;
@@ -945,6 +971,36 @@ function displayGaming(day, time, nextEventTime) {
             ctx.fillText(`占い師さん、${resultOfFortuneTelling.displayName} は ${resultOfFortuneTelling.color} でした。`, 5, 155);
         }
     }
+}
+
+function checkIfImDead(players) {
+    for (let [playerId, player] of players) {
+        if (playerId === clientObj.myPlayerId && player.isAlive === false) {
+            clientObj.myIsAlive = false;
+            $('#mainChatInput').val(''); // 空にする
+            $('#mainChatInput').attr('placeholder', '死者は会話ができません。');
+            $('#mainChatInput').prop('disabled', true);
+            $('#mainChatButton').fadeOut();
+        }
+    }
+}
+
+function disableMainChat() {
+    if (clientObj.myIsAlive === false) return;
+
+    $('#mainChatInput').val(''); // 空にする
+    $('#mainChatInput').attr('placeholder', '夜の間はチャットができません。');
+    $('#mainChatInput').prop('disabled', true);
+    $('#mainChatButton').fadeOut();
+}
+
+function enableMainChat() {
+    if (clientObj.myIsAlive === false) return;
+
+    $('#mainChatInput').val(''); // 空にする
+    $('#mainChatInput').attr('placeholder', '');
+    $('#mainChatInput').prop('disabled', false);
+    $('#mainChatButton').show();
 }
 
 function calcRemainTime(distTime) {

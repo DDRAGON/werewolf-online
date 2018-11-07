@@ -99,26 +99,32 @@ function getPlayersList(tableId) {
 }
 
 function gotChatText(socketId, tableId, displayName, thumbUrl, chatText) {
-   const chatTime = new Date().getTime();
-   const chatId = calcChatId(tableId, displayName, chatText, chatTime);
-   const chatObj = {
-      chatId,
-      chatText,
-      displayName,
-      thumbUrl,
-      chatTime
-   };
-   const table = gameObj.tables[tableId];
-   table.chats.set(chatId, chatObj);
-   return chatObj;
+    const table = gameObj.tables[tableId];
+    const sendPlayerId = table.playerBySockets.get(socketId).playerId;
+    const sendPlayer = table.players.get(sendPlayerId);
+    if (sendPlayer.isAlive === false) { return; }
+
+    const chatTime = new Date().getTime();
+    const chatId = calcChatId(tableId, displayName, chatText, chatTime);
+    const chatObj = {
+        chatId,
+        chatText,
+        displayName,
+        thumbUrl,
+        chatTime
+    };
+    table.chats.set(chatId, chatObj);
+
+    gameObj.tableSocketsMap.get(tableId).emit('new chat', chatObj);
 }
 
 function gotPrivateChatText(socketId, tableId, displayName, thumbUrl, privateChatText) {
     const table = gameObj.tables[tableId];
     const sendPlayerId = table.playerBySockets.get(socketId).playerId;
     const sendPlayer = table.players.get(sendPlayerId);
-    const sendPlayerRole = sendPlayer.role;
+    if (sendPlayer.isAlive === false) { return; }
 
+    const sendPlayerRole = sendPlayer.role;
     if (sendPlayerRole === '共有者' || sendPlayerRole === '妖狐' || sendPlayerRole === '人狼') {
 
         const chatTime = new Date().getTime();
@@ -248,6 +254,8 @@ function changeEvent(tableId) {
             dt.setSeconds(dt.getSeconds() + 15);
             table.nextEventTime = dt.getTime();
 
+            suspendPlayer(tableId, table.suspendedPlayers); // 決戦投票は何が何でも一人吊る
+
             night(table, table.nextEventTime);
             setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
             break;
@@ -274,7 +282,6 @@ function changeEvent(tableId) {
         case 'runoffElection':
            suspendedPlayersMap = voteAddingUp(tableId, table.suspendedPlayers);
            table.suspendedPlayers = suspendedPlayersMap;
-           suspendPlayer(tableId, suspendedPlayersMap); // 決戦投票は何が何でも一人吊る
 
            table.time = 'runoffElectionResult';
 
@@ -345,7 +352,7 @@ function changeEvent(tableId) {
 
 function night(table, nextEventTime) {
     const playersWithoutWerewolfMap = makePlayersWithoutWerewolf(table);
-    for ([playerId, player] of table.players) {
+    for (let [playerId, player] of table.players) {
         const socketId = player.socketId;
 
         if (player.role === '人狼') {
@@ -353,7 +360,8 @@ function night(table, nextEventTime) {
             gameObj.tableSocketsMap.get(table.tableId).to(socketId).emit('Hi werewolf, night has come', {
                 playersWithoutWerewolfMap: Array.from(playersWithoutWerewolfMap),
                 time: table.time,
-                nextEventTime
+                nextEventTime,
+                playersList: getPlayersList(table.tableId)
             });
         } else if (player.role === '占い師') {
             table.tellFortunesto = null;
@@ -361,18 +369,21 @@ function night(table, nextEventTime) {
             gameObj.tableSocketsMap.get(table.tableId).to(socketId).emit('Hi fortune teller, night has come', {
                 playersForFortuneTellerMap: Array.from(playersForFortuneTellerMap),
                 time: table.time,
-                nextEventTime
+                nextEventTime,
+                playersList: getPlayersList(table.tableId)
             });
         } else if (player.role === '狩人') {
             table.protectto = null;
             gameObj.tableSocketsMap.get(table.tableId).to(socketId).emit('Hi hunter, night has come', {
                 time: table.time,
-                nextEventTime
+                nextEventTime,
+                playersList: getPlayersList(table.tableId)
             });
         } else {
             gameObj.tableSocketsMap.get(table.tableId).to(socketId).emit('night has come', {
                 time: table.time,
-                nextEventTime
+                nextEventTime,
+                playersList: getPlayersList(table.tableId)
             });
         }
     }
@@ -594,10 +605,9 @@ function voteAddingUp(tableId, candidatesMap) {
     const votedPlayers = new Map();
     let mostVote = 0;
     let mostVotedPlayers = new Map();
-    console.log(`tableId = ${tableId}`);
-    console.log(candidatesMap);
 
     for ([playerId, player] of playersAndAIsMap) {
+        if (player.isAlive === false) return;
 
         if (table.time === 'morningVote' && !player.votedto) {
             // 投票してなかった場合はランダム
