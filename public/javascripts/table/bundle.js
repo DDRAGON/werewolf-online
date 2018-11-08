@@ -38446,15 +38446,7 @@ function drawRunoffElectionPlayersList(players, suspendedPlayers) {
 
             if (_player4.isAlive === true) continue;
 
-            var _playerNameText10 = '\uD83D\uDC80' + _player4.displayName;
-            if (clientObj.resultsOfFortuneTellingMap.has(_playerId4)) {
-                var color = clientObj.resultsOfFortuneTellingMap.get(_playerId4);
-                if (color === '白') {
-                    _playerNameText10 = '⚪' + _playerNameText10;
-                } else if (color === '黒') {
-                    _playerNameText10 = '⚫' + _playerNameText10;
-                }
-            }
+            var _playerNameText10 = getPlayerNameWithColor(_playerId4, _player4);
 
             (0, _jquery2.default)('<div>', {
                 id: _playerId4,

@@ -206,6 +206,7 @@ function changeEvent(tableId) {
             table.time = 'morningVote';
 
             resetVotedto(tableId);
+            resetRunoffElectionVotedto(tableId);
 
             // dt.setMinutes(dt.getMinutes() + 1); // 投票の時間は１分
             dt.setSeconds(dt.getSeconds() + 10);
@@ -262,8 +263,6 @@ function changeEvent(tableId) {
 
         case 'morningVoteResultAndNextIsRunoffElection':
             table.time = 'runoffElection';
-
-            resetRunoffElectionVotedto(tableId);
 
             // dt.setMinutes(dt.getMinutes() + 1); // 決選投票の時間は１分
             dt.setSeconds(dt.getSeconds() + 10);
@@ -332,20 +331,46 @@ function changeEvent(tableId) {
             break;
 
         case 'nightResultMorning':
-            table.time = 'morning';
 
-            //dt.setMinutes(dt.getMinutes() + gameObj.morningMinutes); // 朝の時間は５分
-            dt.setSeconds(dt.getSeconds() + 10);
-            table.nextEventTime = dt.getTime();
+            const gameEndObj = checkGameEnd(table);
 
-            gameObj.tableSocketsMap.get(tableId).emit('morning start', {
-                tableState: table.tableState,
-                time: table.time,
-                nextEventTime: table.nextEventTime,
-                playersList: getPlayersList(tableId)
-            });
+            if (gameEndObj.isGameEnd === false) {
 
-            setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
+                table.time = 'morning';
+
+                //dt.setMinutes(dt.getMinutes() + gameObj.morningMinutes); // 朝の時間は５分
+                dt.setSeconds(dt.getSeconds() + 10);
+                table.nextEventTime = dt.getTime();
+
+                gameObj.tableSocketsMap.get(tableId).emit('morning start', {
+                    tableState: table.tableState,
+                    time: table.time,
+                    nextEventTime: table.nextEventTime,
+                    playersList: getPlayersList(tableId)
+                });
+
+                setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
+
+            } else {
+
+                table.time = 'gameResult';
+
+                //dt.setMinutes(dt.getMinutes() + gameObj.morningMinutes); // 次のゲームまでの時間は１０分
+                dt.setSeconds(dt.getSeconds() + 10);
+                table.nextEventTime = dt.getTime();
+
+                gameObj.tableSocketsMap.get(tableId).emit('game result', {
+                    tableState: table.tableState,
+                    time: table.time,
+                    nextEventTime: table.nextEventTime,
+                    playersList: getPlayersList(tableId)
+                });
+
+                setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
+
+            }
+
+
             break;
     }
 }
@@ -606,8 +631,8 @@ function voteAddingUp(tableId, candidatesMap) {
     let mostVote = 0;
     let mostVotedPlayers = new Map();
 
-    for ([playerId, player] of playersAndAIsMap) {
-        if (player.isAlive === false) return;
+    for (let [playerId, player] of playersAndAIsMap) {
+        if (player.isAlive === false) continue;
 
         if (table.time === 'morningVote' && !player.votedto) {
             // 投票してなかった場合はランダム
@@ -692,7 +717,7 @@ function nightVoteAddingUp(table, playersAndAIsMap) {
     let mostVotedPlayers = new Map();
 
     for ([playerId, player] of playersAndAIsMap) {
-        if (player.role !== '人狼') continue;
+        if (player.role !== '人狼' || player.isAlive === false) continue;
         if (!player.werewolfVotedto) continue;
 
         const votedPlayerId = player.werewolfVotedto.playerId;
@@ -880,7 +905,7 @@ function createRolesArray(numOfPlayers) {
 function resetVotedto(tableId) {
     const table = tables[tableId];
     const playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
-    for ([playerId, player] of playersAndAIsMap) {
+    for (let [playerId, player] of playersAndAIsMap) {
         player.votedto = null;
     }
 }
@@ -888,9 +913,81 @@ function resetVotedto(tableId) {
 function resetRunoffElectionVotedto(tableId) {
     const table = tables[tableId];
     const playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
-    for ([playerId, player] of playersAndAIsMap) {
+    for (let [playerId, player] of playersAndAIsMap) {
         player.runoffElectionVotedto = null;
     }
+}
+
+function checkGameEnd(table) {
+    const playersAndAIsMap = new Map(Array.from(table.players).concat(Array.from(table.AIs)));
+    const whitePlayersMap = new Map();
+    const blackPlayersMap = new Map();
+    const inuPlayersMap = new Map();
+    let aliveWhiteCount = 0;
+    let aliveBlackCount = 0;
+    let isAliveInus = false;
+
+    for (let [playerId, player] of playersAndAIsMap) {
+
+        if (player.role === '妖狐') {
+            inuPlayersMap.push(playerId, player);
+        } else if (player.role === '狂人' || player.role === '人狼') {
+            blackPlayersMap.push(playerId, player);
+        } else {
+            whitePlayersMap.push(playerId, player);
+        }
+
+        if (player.isAlive === false) return;
+
+        if (getColorFromRole(player.role) === '白') {
+            aliveWhiteCount += 1;
+        } else if (getColorFromRole(player.role) === '黒') {
+            aliveBlackCount += 1;
+        }
+
+        if (player.role === '妖狐') {
+            isAliveInus = true;
+        }
+    }
+
+    if (aliveBlackCount === 0) { // 狼が全滅
+        if (isAliveInus === false) { // 村人陣営の勝ち
+            return {
+                isGameEnd: true,
+                winType: '村人陣営',
+                winPlayersMap: whitePlayersMap
+            }
+        } else {
+            return {
+                isGameEnd: true,
+                winType: '妖狐陣営',
+                winPlayersMap: inuPlayersMap
+            }
+        }
+
+    }
+
+    if (aliveBlackCount >= aliveWhiteCount) { // 狼の方が上回った
+        if (isAliveInus === false) { // 狼陣陣営の勝ち
+            return {
+                isGameEnd: true,
+                winType: '狼陣営',
+                winPlayersMap: blackPlayersMap
+            }
+        } else {
+            return {
+                isGameEnd: true,
+                winType: '妖狐陣営',
+                winPlayersMap: inuPlayersMap
+            }
+        }
+    }
+
+    return {
+        isGameEnd: false,
+        winType: null,
+        winPlayersMap: new Map()
+    };
 }
 
 function calcPlayerId(tableId, displayName, twitterId) {

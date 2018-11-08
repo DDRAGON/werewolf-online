@@ -690,15 +690,7 @@ function drawRunoffElectionPlayersList(players, suspendedPlayers) {
     for (let [playerId, player] of players) {
         if (player.isAlive === true) continue;
 
-        let playerNameText = `💀${player.displayName}`;
-        if (clientObj.resultsOfFortuneTellingMap.has(playerId)) {
-            const color = clientObj.resultsOfFortuneTellingMap.get(playerId);
-            if (color === '白') {
-                playerNameText = '⚪' + playerNameText;
-            } else if (color === '黒') {
-                playerNameText = '⚫' + playerNameText;
-            }
-        }
+        const playerNameText = getPlayerNameWithColor(playerId, player);
 
         $('<div>', {
             id: playerId,
