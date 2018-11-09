@@ -359,6 +359,13 @@ function changeEvent(tableId) {
                 dt.setSeconds(dt.getSeconds() + 10);
                 table.nextEventTime = dt.getTime();
 
+                {
+                    isGameEnd: true,
+                        winType: '妖狐陣営',
+                    winPlayersMap: inuPlayersMap,
+                    allPlayersRoleMap
+                }
+
                 gameObj.tableSocketsMap.get(tableId).emit('game result', {
                     tableState: table.tableState,
                     time: table.time,
@@ -923,18 +930,28 @@ function checkGameEnd(table) {
     const whitePlayersMap = new Map();
     const blackPlayersMap = new Map();
     const inuPlayersMap = new Map();
+    const allPlayersRoleMap = new Map();
     let aliveWhiteCount = 0;
     let aliveBlackCount = 0;
     let isAliveInus = false;
 
     for (let [playerId, player] of playersAndAIsMap) {
 
+        const playerForSend = {
+            playerId,
+            displayName: player.displayName,
+            role: player.role,
+            isAlive: player.isAlive
+        };
+        allPlayersRoleMap.set(playerId, playerForSend);
+
+
         if (player.role === '妖狐') {
-            inuPlayersMap.push(playerId, player);
+            inuPlayersMap.push(playerId, playerForSend);
         } else if (player.role === '狂人' || player.role === '人狼') {
-            blackPlayersMap.push(playerId, player);
+            blackPlayersMap.push(playerId, playerForSend);
         } else {
-            whitePlayersMap.push(playerId, player);
+            whitePlayersMap.push(playerId, playerForSend);
         }
 
         if (player.isAlive === false) return;
@@ -955,13 +972,15 @@ function checkGameEnd(table) {
             return {
                 isGameEnd: true,
                 winType: '村人陣営',
-                winPlayersMap: whitePlayersMap
+                winPlayersMap: whitePlayersMap,
+                allPlayersRoleMap
             }
         } else {
             return {
                 isGameEnd: true,
                 winType: '妖狐陣営',
-                winPlayersMap: inuPlayersMap
+                winPlayersMap: inuPlayersMap,
+                allPlayersRoleMap
             }
         }
 
@@ -972,13 +991,15 @@ function checkGameEnd(table) {
             return {
                 isGameEnd: true,
                 winType: '狼陣営',
-                winPlayersMap: blackPlayersMap
+                winPlayersMap: blackPlayersMap,
+                allPlayersRoleMap
             }
         } else {
             return {
                 isGameEnd: true,
                 winType: '妖狐陣営',
-                winPlayersMap: inuPlayersMap
+                winPlayersMap: inuPlayersMap,
+                allPlayersRoleMap
             }
         }
     }
@@ -986,7 +1007,8 @@ function checkGameEnd(table) {
     return {
         isGameEnd: false,
         winType: null,
-        winPlayersMap: new Map()
+        winPlayersMap: new Map(),
+        allPlayersRoleMap: new Map()
     };
 }
 
