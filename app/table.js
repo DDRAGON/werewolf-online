@@ -861,7 +861,7 @@ function displayGaming(day, time, nextEventTime) {
         ctx.arc(380, 50, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
         ctx.fill();
 
-    } else if (time === 'nightResultMorning') {
+    } else if (time === 'nightResultMorning' || time === 'gameResult') {
 
     }
 
@@ -975,6 +975,16 @@ function displayGaming(day, time, nextEventTime) {
             ctx.font = "12px 'ＭＳ Ｐゴシック'";
             ctx.fillText(`占い師さん、${resultOfFortuneTelling.displayName} は ${resultOfFortuneTelling.color} でした。`, 5, 155);
         }
+    }
+
+    if (time === 'gameResult') {
+        ctx.fillStyle = "black";
+        ctx.font = "20px 'ＭＳ Ｐゴシック'";
+        ctx.fillText(`Day ${day} 次のゲーム開始まで  残り時間 ${remainTimeText}`, 10, 22);
+
+
+        ctx.font = "24px 'ＭＳ Ｐゴシック'";
+        ctx.fillText(`${clientObj.winType} の勝利です！`, 70, 200);
     }
 }
 
