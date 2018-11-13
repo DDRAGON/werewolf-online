@@ -222,9 +222,22 @@ socket.on('night result', (data) => {
     checkIfImDead(clientObj.players);
 });
 
+socket.on('game result', (data) => {
+   clientObj.tableState = data.tableState;
+   clientObj.time = data.time;
+   clientObj.nextEventTime = data.nextEventTime;
+   clientObj.isGameEnd = data.isGameEnd;
+   clientObj.winType = data.winType;
+   clientObj.winPlayersMap = new Map(data.winPlayersMap);
+   clientObj.allPlayersRoleMap = new Map(data.allPlayersRoleMap);
+   displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+   drawPlayersListForGameEnd(clientObj.players, clientObj.winPlayersMap, clientObj.allPlayersRoleMap);
+});
+
 
 function drawPlayersList(players) {
     $('#participants').empty();
+
     $('<div>', {text: '参加者一覧'}).appendTo('#participants');
 
    for (let [playerId, player] of players) {

@@ -359,18 +359,14 @@ function changeEvent(tableId) {
                 dt.setSeconds(dt.getSeconds() + 10);
                 table.nextEventTime = dt.getTime();
 
-                {
-                    isGameEnd: true,
-                        winType: '妖狐陣営',
-                    winPlayersMap: inuPlayersMap,
-                    allPlayersRoleMap
-                }
-
                 gameObj.tableSocketsMap.get(tableId).emit('game result', {
                     tableState: table.tableState,
                     time: table.time,
                     nextEventTime: table.nextEventTime,
-                    playersList: getPlayersList(tableId)
+                    isGameEnd: gameEndObj.isGameEnd,
+                    winType: gameEndObj.winType,
+                    winPlayersMap: Array.from(gameEndObj.winPlayersMap),
+                    allPlayersRoleMap: Array.from(gameEndObj.allPlayersRoleMap)
                 });
 
                 setTimeout(function() {changeEvent(tableId);}, dt.getTime() - new Date().getTime()); // 次のイベント時刻の設定
