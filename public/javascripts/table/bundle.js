@@ -37314,6 +37314,7 @@ var clientObj = {
     resultsOfFortuneTellingByDayMap: new Map(),
     deadPlayersColorMap: new Map(),
     killedPlayersMap: new Map(),
+    werewolfPlayerIds: [],
     chatAutoScroll: true,
     privateChatAutoScroll: true,
     myIsAlive: true
@@ -37421,6 +37422,10 @@ socket.on('new private chat', function (privateChatObj) {
 socket.on('your role', function (myRole) {
     clientObj.role = myRole;
     displayRole(myRole);
+});
+
+socket.on('your teams', function (werewolfPlayerIds) {
+    clientObj.werewolfPlayerIds = werewolfPlayerIds;
 });
 
 socket.on('game start', function (data) {
@@ -37549,8 +37554,21 @@ socket.on('night result', function (data) {
     checkIfImDead(clientObj.players);
 });
 
+socket.on('game result', function (data) {
+    clientObj.tableState = data.tableState;
+    clientObj.time = data.time;
+    clientObj.nextEventTime = data.nextEventTime;
+    clientObj.isGameEnd = data.isGameEnd;
+    clientObj.winType = data.winType;
+    clientObj.winPlayersMap = new Map(data.winPlayersMap);
+    clientObj.allPlayersRoleMap = new Map(data.allPlayersRoleMap);
+    displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
+    drawPlayersListForGameEnd(clientObj.players, clientObj.winPlayersMap, clientObj.allPlayersRoleMap);
+});
+
 function drawPlayersList(players) {
     (0, _jquery2.default)('#participants').empty();
+
     (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
 
     var _iteratorNormalCompletion2 = true;
@@ -37638,6 +37656,10 @@ function getPlayerNameWithColor(playerId, player) {
         displayText = '💀' + displayText;
     }
 
+    if (clientObj.werewolfPlayerIds.length > 0 && clientObj.werewolfPlayerIds.indexOf(playerId) >= 0) {
+        color = '黒';
+    }
+
     if (clientObj.resultsOfFortuneTellingMap.has(playerId)) {
         color = clientObj.resultsOfFortuneTellingMap.get(playerId).color;
     } else if (player.isAlive === false && clientObj.deadPlayersColorMap.has(playerId)) {
@@ -37648,6 +37670,21 @@ function getPlayerNameWithColor(playerId, player) {
         displayText = '⚪ ' + displayText;
     } else if (color && color === '黒') {
         displayText = '⚫ ' + displayText;
+    }
+
+    return displayText;
+}
+
+function getPlayerNameForGmaeEnd(playerId, player, allPlayersRoleMap, isWon) {
+    var role = allPlayersRoleMap.get(playerId).role;
+    var displayText = player.displayName + ' ' + role;
+
+    if (player.isAlive === false) {
+        displayText = '💀' + displayText;
+    }
+
+    if (isWon === true) {
+        displayText = '🎉 ' + displayText;
     }
 
     return displayText;
@@ -38489,6 +38526,87 @@ function addChat(chatObj) {
     }
 }
 
+function drawPlayersListForGameEnd(players, winPlayersMap, allPlayersRoleMap) {
+    (0, _jquery2.default)('#participants').empty();
+    (0, _jquery2.default)('<div>', { text: '参加者一覧' }).appendTo('#participants');
+
+    var _iteratorNormalCompletion18 = true;
+    var _didIteratorError18 = false;
+    var _iteratorError18 = undefined;
+
+    try {
+        for (var _iterator18 = players[Symbol.iterator](), _step18; !(_iteratorNormalCompletion18 = (_step18 = _iterator18.next()).done); _iteratorNormalCompletion18 = true) {
+            var _ref35 = _step18.value;
+
+            var _ref36 = _slicedToArray(_ref35, 2);
+
+            var playerId = _ref36[0];
+            var player = _ref36[1];
+
+            if (!winPlayersMap.has(playerId)) continue;
+
+            var _playerNameText11 = getPlayerNameForGmaeEnd(playerId, player, allPlayersRoleMap, true);
+
+            (0, _jquery2.default)('<div>', {
+                id: playerId,
+                text: _playerNameText11,
+                class: 'alive'
+            }).appendTo('#participants');
+        }
+    } catch (err) {
+        _didIteratorError18 = true;
+        _iteratorError18 = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion18 && _iterator18.return) {
+                _iterator18.return();
+            }
+        } finally {
+            if (_didIteratorError18) {
+                throw _iteratorError18;
+            }
+        }
+    }
+
+    var _iteratorNormalCompletion19 = true;
+    var _didIteratorError19 = false;
+    var _iteratorError19 = undefined;
+
+    try {
+        for (var _iterator19 = players[Symbol.iterator](), _step19; !(_iteratorNormalCompletion19 = (_step19 = _iterator19.next()).done); _iteratorNormalCompletion19 = true) {
+            var _ref37 = _step19.value;
+
+            var _ref38 = _slicedToArray(_ref37, 2);
+
+            var _playerId5 = _ref38[0];
+            var _player5 = _ref38[1];
+
+            if (winPlayersMap.has(_playerId5)) continue;
+
+            var _playerNameText12 = getPlayerNameForGmaeEnd(_playerId5, _player5, allPlayersRoleMap, false);
+
+            (0, _jquery2.default)('<div>', {
+                id: _playerId5,
+                text: _playerNameText12,
+                class: 'dead'
+            }).appendTo('#participants');
+        }
+    } catch (err) {
+        _didIteratorError19 = true;
+        _iteratorError19 = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion19 && _iterator19.return) {
+                _iterator19.return();
+            }
+        } finally {
+            if (_didIteratorError19) {
+                throw _iteratorError19;
+            }
+        }
+    }
+}
+
 function addPrivateChat(privateChatObj) {
     var addHTML = '\n<p id="' + privateChatObj.privateChatId + '">\n   <img src="' + privateChatObj.thumbUrl + '" align="left">\n   <span>' + privateChatObj.displayName + '</span>\n   <span>' + privateChatObj.chatTime + '</span>\n   <br>\n   <span>' + privateChatObj.privateChatText + '</span>\n</p>';
 
@@ -38585,7 +38703,7 @@ function displayGaming(day, time, nextEventTime) {
         ctx.fillStyle = "midnightblue";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        ctx.fillStyle = "#FFD700";
+        ctx.fillStyle = "#ffd700";
         ctx.beginPath();
         ctx.arc(400, 50, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
         ctx.fill();
@@ -38594,7 +38712,7 @@ function displayGaming(day, time, nextEventTime) {
         ctx.beginPath();
         ctx.arc(380, 50, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
         ctx.fill();
-    } else if (time === 'nightResultMorning') {}
+    } else if (time === 'nightResultMorning' || time === 'gameResult') {}
 
     if (time === 'morning') {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
@@ -38603,7 +38721,6 @@ function displayGaming(day, time, nextEventTime) {
     }
 
     if (time === 'morningVote') {
-        console.log(remainTimeText);
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
         ctx.fillText('Day ' + day + ' \u6295\u7968\u306E\u6B8B\u308A\u6642\u9593 ' + remainTimeText, 10, 22);
@@ -38619,33 +38736,33 @@ function displayGaming(day, time, nextEventTime) {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
         ctx.fillText('Day ' + day + '  \u7D50\u679C\u767A\u8868 ' + remainTimeText, 10, 22);
-        var _iteratorNormalCompletion18 = true;
-        var _didIteratorError18 = false;
-        var _iteratorError18 = undefined;
+        var _iteratorNormalCompletion20 = true;
+        var _didIteratorError20 = false;
+        var _iteratorError20 = undefined;
 
         try {
-            for (var _iterator18 = clientObj.suspendedPlayers[Symbol.iterator](), _step18; !(_iteratorNormalCompletion18 = (_step18 = _iterator18.next()).done); _iteratorNormalCompletion18 = true) {
-                var _ref35 = _step18.value;
+            for (var _iterator20 = clientObj.suspendedPlayers[Symbol.iterator](), _step20; !(_iteratorNormalCompletion20 = (_step20 = _iterator20.next()).done); _iteratorNormalCompletion20 = true) {
+                var _ref39 = _step20.value;
 
-                var _ref36 = _slicedToArray(_ref35, 2),
-                    playerId = _ref36[0],
-                    votedPlayer = _ref36[1];
+                var _ref40 = _slicedToArray(_ref39, 2),
+                    playerId = _ref40[0],
+                    votedPlayer = _ref40[1];
 
                 ctx.font = "18px 'ＭＳ Ｐゴシック'";
                 ctx.fillStyle = "black";
                 ctx.fillText(votedPlayer.displayName + ' \u3055\u3093\u306E\u51E6\u5211\u304C\u6C7A\u5B9A\u3044\u305F\u3057\u307E\u3057\u305F\u3002', 10, 120);
             }
         } catch (err) {
-            _didIteratorError18 = true;
-            _iteratorError18 = err;
+            _didIteratorError20 = true;
+            _iteratorError20 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion18 && _iterator18.return) {
-                    _iterator18.return();
+                if (!_iteratorNormalCompletion20 && _iterator20.return) {
+                    _iterator20.return();
                 }
             } finally {
-                if (_didIteratorError18) {
-                    throw _iteratorError18;
+                if (_didIteratorError20) {
+                    throw _iteratorError20;
                 }
             }
         }
@@ -38675,33 +38792,33 @@ function displayGaming(day, time, nextEventTime) {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
         ctx.fillText('Day ' + day + '  \u6C7A\u6226\u6295\u7968\u7D50\u679C\u767A\u8868  ' + remainTimeText, 10, 22);
-        var _iteratorNormalCompletion19 = true;
-        var _didIteratorError19 = false;
-        var _iteratorError19 = undefined;
+        var _iteratorNormalCompletion21 = true;
+        var _didIteratorError21 = false;
+        var _iteratorError21 = undefined;
 
         try {
-            for (var _iterator19 = clientObj.suspendedPlayers[Symbol.iterator](), _step19; !(_iteratorNormalCompletion19 = (_step19 = _iterator19.next()).done); _iteratorNormalCompletion19 = true) {
-                var _ref37 = _step19.value;
+            for (var _iterator21 = clientObj.suspendedPlayers[Symbol.iterator](), _step21; !(_iteratorNormalCompletion21 = (_step21 = _iterator21.next()).done); _iteratorNormalCompletion21 = true) {
+                var _ref41 = _step21.value;
 
-                var _ref38 = _slicedToArray(_ref37, 2),
-                    playerId = _ref38[0],
-                    votedPlayer = _ref38[1];
+                var _ref42 = _slicedToArray(_ref41, 2),
+                    playerId = _ref42[0],
+                    votedPlayer = _ref42[1];
 
                 ctx.font = "18px 'ＭＳ Ｐゴシック'";
                 ctx.fillStyle = "black";
                 ctx.fillText(votedPlayer.displayName + ' \u3055\u3093\u306E\u51E6\u5211\u304C\u6C7A\u5B9A\u3044\u305F\u3057\u307E\u3057\u305F\u3002', 10, 120);
             }
         } catch (err) {
-            _didIteratorError19 = true;
-            _iteratorError19 = err;
+            _didIteratorError21 = true;
+            _iteratorError21 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion19 && _iterator19.return) {
-                    _iterator19.return();
+                if (!_iteratorNormalCompletion21 && _iterator21.return) {
+                    _iterator21.return();
                 }
             } finally {
-                if (_didIteratorError19) {
-                    throw _iteratorError19;
+                if (_didIteratorError21) {
+                    throw _iteratorError21;
                 }
             }
         }
@@ -38747,32 +38864,32 @@ function displayGaming(day, time, nextEventTime) {
             ctx.fillText('\u6628\u6669\u306E\u72A0\u7272\u8005\u306F', 40, 70);
             var positionY = 90;
             ctx.font = "14px 'ＭＳ Ｐゴシック'";
-            var _iteratorNormalCompletion20 = true;
-            var _didIteratorError20 = false;
-            var _iteratorError20 = undefined;
+            var _iteratorNormalCompletion22 = true;
+            var _didIteratorError22 = false;
+            var _iteratorError22 = undefined;
 
             try {
-                for (var _iterator20 = clientObj.killedPlayersMap[Symbol.iterator](), _step20; !(_iteratorNormalCompletion20 = (_step20 = _iterator20.next()).done); _iteratorNormalCompletion20 = true) {
-                    var _ref39 = _step20.value;
+                for (var _iterator22 = clientObj.killedPlayersMap[Symbol.iterator](), _step22; !(_iteratorNormalCompletion22 = (_step22 = _iterator22.next()).done); _iteratorNormalCompletion22 = true) {
+                    var _ref43 = _step22.value;
 
-                    var _ref40 = _slicedToArray(_ref39, 2),
-                        killedPlayerId = _ref40[0],
-                        killedPlayer = _ref40[1];
+                    var _ref44 = _slicedToArray(_ref43, 2),
+                        killedPlayerId = _ref44[0],
+                        killedPlayer = _ref44[1];
 
                     ctx.fillText(killedPlayer.displayName, 10, positionY);
                     positionY += 20;
                 }
             } catch (err) {
-                _didIteratorError20 = true;
-                _iteratorError20 = err;
+                _didIteratorError22 = true;
+                _iteratorError22 = err;
             } finally {
                 try {
-                    if (!_iteratorNormalCompletion20 && _iterator20.return) {
-                        _iterator20.return();
+                    if (!_iteratorNormalCompletion22 && _iterator22.return) {
+                        _iterator22.return();
                     }
                 } finally {
-                    if (_didIteratorError20) {
-                        throw _iteratorError20;
+                    if (_didIteratorError22) {
+                        throw _iteratorError22;
                     }
                 }
             }
@@ -38787,21 +38904,30 @@ function displayGaming(day, time, nextEventTime) {
             ctx.fillText('\u5360\u3044\u5E2B\u3055\u3093\u3001' + _resultOfFortuneTelling.displayName + ' \u306F ' + _resultOfFortuneTelling.color + ' \u3067\u3057\u305F\u3002', 5, 155);
         }
     }
+
+    if (time === 'gameResult') {
+        ctx.fillStyle = "black";
+        ctx.font = "20px 'ＭＳ Ｐゴシック'";
+        ctx.fillText('Day ' + day + ' \u6B21\u306E\u30B2\u30FC\u30E0\u958B\u59CB\u307E\u3067  \u6B8B\u308A\u6642\u9593 ' + remainTimeText, 10, 22);
+
+        ctx.font = "24px 'ＭＳ Ｐゴシック'";
+        ctx.fillText(clientObj.winType + ' \u306E\u52DD\u5229\u3067\u3059\uFF01', 70, 100);
+    }
 }
 
 function checkIfImDead(players) {
-    var _iteratorNormalCompletion21 = true;
-    var _didIteratorError21 = false;
-    var _iteratorError21 = undefined;
+    var _iteratorNormalCompletion23 = true;
+    var _didIteratorError23 = false;
+    var _iteratorError23 = undefined;
 
     try {
-        for (var _iterator21 = players[Symbol.iterator](), _step21; !(_iteratorNormalCompletion21 = (_step21 = _iterator21.next()).done); _iteratorNormalCompletion21 = true) {
-            var _ref41 = _step21.value;
+        for (var _iterator23 = players[Symbol.iterator](), _step23; !(_iteratorNormalCompletion23 = (_step23 = _iterator23.next()).done); _iteratorNormalCompletion23 = true) {
+            var _ref45 = _step23.value;
 
-            var _ref42 = _slicedToArray(_ref41, 2);
+            var _ref46 = _slicedToArray(_ref45, 2);
 
-            var playerId = _ref42[0];
-            var player = _ref42[1];
+            var playerId = _ref46[0];
+            var player = _ref46[1];
 
             if (playerId === clientObj.myPlayerId && player.isAlive === false) {
                 clientObj.myIsAlive = false;
@@ -38812,16 +38938,16 @@ function checkIfImDead(players) {
             }
         }
     } catch (err) {
-        _didIteratorError21 = true;
-        _iteratorError21 = err;
+        _didIteratorError23 = true;
+        _iteratorError23 = err;
     } finally {
         try {
-            if (!_iteratorNormalCompletion21 && _iterator21.return) {
-                _iterator21.return();
+            if (!_iteratorNormalCompletion23 && _iterator23.return) {
+                _iterator23.return();
             }
         } finally {
-            if (_didIteratorError21) {
-                throw _iteratorError21;
+            if (_didIteratorError23) {
+                throw _iteratorError23;
             }
         }
     }
@@ -38855,6 +38981,7 @@ function calcRemainTime(distTime) {
     if (remainHour > 0) remainText += remainHour + '\u6642\u9593';
     if (remainMinutes > 0) remainText += remainMinutes + '\u5206';
     if (remainSeconds > 0) remainText += remainSeconds + '\u79D2';
+    if (remainHour === 0 && remainMinutes === 0 && remainSeconds === 0) remainText = '\u6642\u9593\u3067\u3059';
 
     return remainText;
 }

@@ -15,6 +15,7 @@ const clientObj = {
     resultsOfFortuneTellingByDayMap: new Map(),
     deadPlayersColorMap: new Map(),
     killedPlayersMap: new Map(),
+    werewolfPlayerIds: [],
     chatAutoScroll: true,
     privateChatAutoScroll: true,
     myIsAlive: true
@@ -94,6 +95,10 @@ socket.on('new private chat', (privateChatObj) => {
 socket.on('your role', (myRole) => {
     clientObj.role = myRole;
     displayRole(myRole);
+});
+
+socket.on('your teams', (werewolfPlayerIds) => {
+    clientObj.werewolfPlayerIds = werewolfPlayerIds;
 });
 
 socket.on('game start', (data) => {
@@ -273,6 +278,10 @@ function getPlayerNameWithColor(playerId, player) {
         displayText = '💀' + displayText;
     }
 
+    if (clientObj.werewolfPlayerIds.length > 0 && clientObj.werewolfPlayerIds.indexOf(playerId) >= 0) {
+        color = '黒';
+    }
+
     if (clientObj.resultsOfFortuneTellingMap.has(playerId)) {
         color = clientObj.resultsOfFortuneTellingMap.get(playerId).color;
     } else if (player.isAlive === false && clientObj.deadPlayersColorMap.has(playerId)) {
@@ -283,6 +292,21 @@ function getPlayerNameWithColor(playerId, player) {
         displayText = '⚪ ' + displayText;
     } else if (color && color === '黒') {
         displayText = '⚫ ' + displayText;
+    }
+
+    return displayText;
+}
+
+function getPlayerNameForGmaeEnd(playerId, player, allPlayersRoleMap, isWon) {
+    const role = allPlayersRoleMap.get(playerId).role;
+    let displayText = `${player.displayName} ${role}`;
+
+    if (player.isAlive === false) {
+        displayText = '💀' + displayText;
+    }
+
+    if (isWon === true) {
+        displayText = '🎉 ' + displayText;
     }
 
     return displayText;
@@ -739,6 +763,35 @@ function addChat(chatObj) {
    }
 }
 
+function drawPlayersListForGameEnd(players, winPlayersMap, allPlayersRoleMap) {
+    $('#participants').empty();
+    $('<div>', {text: '参加者一覧'}).appendTo('#participants');
+
+    for (let [playerId, player] of players) {
+        if (!winPlayersMap.has(playerId)) continue;
+
+        const playerNameText = getPlayerNameForGmaeEnd(playerId, player, allPlayersRoleMap, true);
+
+        $('<div>', {
+            id: playerId,
+            text: playerNameText,
+            class: 'alive'
+        }).appendTo('#participants');
+    }
+
+    for (let [playerId, player] of players) {
+        if (winPlayersMap.has(playerId)) continue;
+
+        const playerNameText = getPlayerNameForGmaeEnd(playerId, player, allPlayersRoleMap, false);
+
+        $('<div>', {
+            id: playerId,
+            text: playerNameText,
+            class: 'dead'
+        }).appendTo('#participants');
+    }
+}
+
 function addPrivateChat(privateChatObj) {
     const addHTML = `
 <p id="${privateChatObj.privateChatId}">
@@ -851,7 +904,7 @@ function displayGaming(day, time, nextEventTime) {
         ctx.fillStyle = "midnightblue";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        ctx.fillStyle = "#FFD700";
+        ctx.fillStyle = "#ffd700";
         ctx.beginPath();
         ctx.arc(400, 50, 30, 0 * Math.PI / 180, 360 * Math.PI / 180);
         ctx.fill();
@@ -873,7 +926,6 @@ function displayGaming(day, time, nextEventTime) {
     }
 
     if (time === 'morningVote') {
-        console.log(remainTimeText);
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
         ctx.fillText(`Day ${day} 投票の残り時間 ${remainTimeText}`, 10, 22);
@@ -984,7 +1036,7 @@ function displayGaming(day, time, nextEventTime) {
 
 
         ctx.font = "24px 'ＭＳ Ｐゴシック'";
-        ctx.fillText(`${clientObj.winType} の勝利です！`, 70, 200);
+        ctx.fillText(`${clientObj.winType} の勝利です！`, 70, 100);
     }
 }
 
@@ -1028,6 +1080,7 @@ function calcRemainTime(distTime) {
     if (remainHour > 0) remainText += `${remainHour}時間`;
     if (remainMinutes > 0) remainText += `${remainMinutes}分`;
     if (remainSeconds > 0) remainText += `${remainSeconds}秒`;
+    if (remainHour === 0 && remainMinutes === 0 && remainSeconds === 0) remainText = `時間です`;
 
     return remainText;
 }

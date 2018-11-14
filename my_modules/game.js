@@ -11,6 +11,7 @@ for (let tableId = 1; tableId <= 16; tableId++) {
        chats: new Map(),
        privateChats: new Map(),
        fortuneToldPlayersMap: new Map(),
+       werewolfPlayerIds: [],
        tableState: 'waiting'
    };
 
@@ -62,6 +63,9 @@ function newConnection(socketId, tableId, displayName, thumbUrl, twitterId) {
        previousPlayer.socketId = socketId;
        if (previousPlayer.role) {
            gameObj.tableSocketsMap.get(tableId).to(socketId).emit('your role', role);
+           if (role && role === '人狼') {
+               gameObj.tableSocketsMap.get(tableId).to(socketId).emit('your teams', table.werewolfPlayerIds);
+           }
        }
    }
 
@@ -177,6 +181,9 @@ function startGame(tableId) {
         const playerId = player.playerId;
         const role = table.players.get(playerId).role;
         gameObj.tableSocketsMap.get(tableId).to(socketId).emit('your role', role);
+        if (role === '人狼') {
+            gameObj.tableSocketsMap.get(tableId).to(socketId).emit('your teams', table.werewolfPlayerIds);
+        }
     }
 
     const dt = new Date();
@@ -828,20 +835,25 @@ function addAIs(tableId) {
 }
 
 function addRoles(tableId) {
+    const table = tables[tableId];
     const numOfPlayers = gameObj.tables[tableId].players.size + gameObj.tables[tableId].AIs.size;
     const rolesArray = createRolesArray(numOfPlayers);
-    for ([socketId, player] of gameObj.tables[tableId].players) {
+
+    for ([playerId, player] of gameObj.tables[tableId].players) {
         const roleIndex = Math.floor(Math.random() * rolesArray.length);
         player.role = rolesArray[roleIndex];
+        if (player.role === '人狼') { table.werewolfPlayerIds.push(playerId); }
         rolesArray.splice(roleIndex, 1);
     }
     for ([aiId, ai] of gameObj.tables[tableId].AIs) {
         const roleIndex = Math.floor(Math.random() * rolesArray.length);
         ai.role = rolesArray[roleIndex];
+        if (ai.role === '人狼') { table.werewolfPlayerIds.push(aiId); }
         rolesArray.splice(roleIndex, 1);
     }
 
     // デバッグ用 役職コントロール
+    /*
     const changeRole = '霊能者';
     for ([socketId, player] of gameObj.tables[tableId].players) {
         for ([aiId, ai] of gameObj.tables[tableId].AIs) {
@@ -851,6 +863,7 @@ function addRoles(tableId) {
             }
         }
     }
+    */
 }
 
 // 参考 https://ruru-jinro.net/cast.jsp
@@ -943,14 +956,14 @@ function checkGameEnd(table) {
 
 
         if (player.role === '妖狐') {
-            inuPlayersMap.push(playerId, playerForSend);
+            inuPlayersMap.set(playerId, playerForSend);
         } else if (player.role === '狂人' || player.role === '人狼') {
-            blackPlayersMap.push(playerId, playerForSend);
+            blackPlayersMap.set(playerId, playerForSend);
         } else {
-            whitePlayersMap.push(playerId, playerForSend);
+            whitePlayersMap.set(playerId, playerForSend);
         }
 
-        if (player.isAlive === false) return;
+        if (player.isAlive === false) continue;
 
         if (getColorFromRole(player.role) === '白') {
             aliveWhiteCount += 1;
