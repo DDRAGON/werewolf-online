@@ -747,11 +747,13 @@ function runoffElectionVote(suspendedPlayerId, displayName) {
 }
 
 function addChat(chatObj) {
+   const displayTime = passedTimeString(chatObj.chatTime);
    const addHTML = `
 <p id="${chatObj.chatId}">
    <img src="${chatObj.thumbUrl}" align="left">
    <span>${chatObj.displayName}</span>
-   <span>${chatObj.chatTime}</span>
+   <span>${displayTime}</span>
+   <span hidden>${chatObj.chatTime}</span>
    <br>
    <span>${chatObj.chatText}</span>
 </p>`;
@@ -793,11 +795,13 @@ function drawPlayersListForGameEnd(players, winPlayersMap, allPlayersRoleMap) {
 }
 
 function addPrivateChat(privateChatObj) {
+    const displayTime = passedTimeString(privateChatObj.chatTime);
     const addHTML = `
 <p id="${privateChatObj.privateChatId}">
    <img src="${privateChatObj.thumbUrl}" align="left">
    <span>${privateChatObj.displayName}</span>
-   <span>${privateChatObj.chatTime}</span>
+   <span>${displayTime}</span>
+   <span hidden>${privateChatObj.chatTime}</span>
    <br>
    <span>${privateChatObj.privateChatText}</span>
 </p>`;
@@ -806,6 +810,18 @@ function addPrivateChat(privateChatObj) {
 
     if (clientObj.privateChatAutoScroll === true) {
         $('#privateChat').scrollTop($('#privateChat').get(0).scrollHeight);
+    }
+}
+
+function updateChatsTime() {
+    for (let chatElement of $('div#mainChat p')) {
+        const postedTime = $(chatElement).children('span').eq(2).text();
+        $(chatElement).children('span').eq(1).text(passedTimeString(postedTime));
+    }
+
+    for (let chatElement of $('div#privateChat')) {
+        const postedTime = $(chatElement).children('span').eq(2).text();
+        $(chatElement).children('span').eq(1).text(passedTimeString(postedTime));
     }
 }
 
@@ -1085,11 +1101,29 @@ function calcRemainTime(distTime) {
     return remainText;
 }
 
+function passedTimeString(postedTime) {
+    const passedTime = new Date().getTime() - postedTime;
+    const passedHour    = Math.floor(passedTime / (1000 * 60 * 60));
+    const passedMinutes = Math.floor((passedTime % (1000 * 60 * 60)) / (1000 * 60));
+    const passedSeconds = Math.floor((passedTime % (1000 * 60)) / (1000));
+
+    let passedText = '';
+    if (passedHour > 0) passedText += `${passedHour}時間`;
+    if (passedMinutes > 0) passedText += `${passedMinutes}分`;
+    if (passedSeconds > 0) passedText += `${passedSeconds}秒`;
+    passedText += ' 前';
+    if (passedHour === 0 && passedMinutes === 0 && passedSeconds === 0) passedText = `たった今`;
+
+    return passedText;
+}
+
 setInterval(function() {
     if (clientObj.tableState && clientObj.tableState === 'waiting') {
         displayWaiting(clientObj.startTime);
     } else if (clientObj.tableState && clientObj.tableState === 'gaming') {
         displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
     }
+
+    updateChatsTime();
 
 }, 1000); // タイマー

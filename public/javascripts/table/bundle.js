@@ -38517,7 +38517,8 @@ function runoffElectionVote(suspendedPlayerId, displayName) {
 }
 
 function addChat(chatObj) {
-    var addHTML = '\n<p id="' + chatObj.chatId + '">\n   <img src="' + chatObj.thumbUrl + '" align="left">\n   <span>' + chatObj.displayName + '</span>\n   <span>' + chatObj.chatTime + '</span>\n   <br>\n   <span>' + chatObj.chatText + '</span>\n</p>';
+    var displayTime = passedTimeString(chatObj.chatTime);
+    var addHTML = '\n<p id="' + chatObj.chatId + '">\n   <img src="' + chatObj.thumbUrl + '" align="left">\n   <span>' + chatObj.displayName + '</span>\n   <span>' + displayTime + '</span>\n   <span hidden>' + chatObj.chatTime + '</span>\n   <br>\n   <span>' + chatObj.chatText + '</span>\n</p>';
 
     (0, _jquery2.default)('#mainChat').append(addHTML);
 
@@ -38608,12 +38609,67 @@ function drawPlayersListForGameEnd(players, winPlayersMap, allPlayersRoleMap) {
 }
 
 function addPrivateChat(privateChatObj) {
-    var addHTML = '\n<p id="' + privateChatObj.privateChatId + '">\n   <img src="' + privateChatObj.thumbUrl + '" align="left">\n   <span>' + privateChatObj.displayName + '</span>\n   <span>' + privateChatObj.chatTime + '</span>\n   <br>\n   <span>' + privateChatObj.privateChatText + '</span>\n</p>';
+    var displayTime = passedTimeString(privateChatObj.chatTime);
+    var addHTML = '\n<p id="' + privateChatObj.privateChatId + '">\n   <img src="' + privateChatObj.thumbUrl + '" align="left">\n   <span>' + privateChatObj.displayName + '</span>\n   <span>' + displayTime + '</span>\n   <span hidden>' + privateChatObj.chatTime + '</span>\n   <br>\n   <span>' + privateChatObj.privateChatText + '</span>\n</p>';
 
     (0, _jquery2.default)('#privateChat').append(addHTML);
 
     if (clientObj.privateChatAutoScroll === true) {
         (0, _jquery2.default)('#privateChat').scrollTop((0, _jquery2.default)('#privateChat').get(0).scrollHeight);
+    }
+}
+
+function updateChatsTime() {
+    var _iteratorNormalCompletion20 = true;
+    var _didIteratorError20 = false;
+    var _iteratorError20 = undefined;
+
+    try {
+        for (var _iterator20 = (0, _jquery2.default)('div#mainChat p')[Symbol.iterator](), _step20; !(_iteratorNormalCompletion20 = (_step20 = _iterator20.next()).done); _iteratorNormalCompletion20 = true) {
+            var chatElement = _step20.value;
+
+            var postedTime = (0, _jquery2.default)(chatElement).children('span').eq(2).text();
+            (0, _jquery2.default)(chatElement).children('span').eq(1).text(passedTimeString(postedTime));
+        }
+    } catch (err) {
+        _didIteratorError20 = true;
+        _iteratorError20 = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion20 && _iterator20.return) {
+                _iterator20.return();
+            }
+        } finally {
+            if (_didIteratorError20) {
+                throw _iteratorError20;
+            }
+        }
+    }
+
+    var _iteratorNormalCompletion21 = true;
+    var _didIteratorError21 = false;
+    var _iteratorError21 = undefined;
+
+    try {
+        for (var _iterator21 = (0, _jquery2.default)('div#privateChat')[Symbol.iterator](), _step21; !(_iteratorNormalCompletion21 = (_step21 = _iterator21.next()).done); _iteratorNormalCompletion21 = true) {
+            var _chatElement = _step21.value;
+
+            var postedTime = (0, _jquery2.default)(_chatElement).children('span').eq(2).text();
+            (0, _jquery2.default)(_chatElement).children('span').eq(1).text(passedTimeString(postedTime));
+        }
+    } catch (err) {
+        _didIteratorError21 = true;
+        _iteratorError21 = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion21 && _iterator21.return) {
+                _iterator21.return();
+            }
+        } finally {
+            if (_didIteratorError21) {
+                throw _iteratorError21;
+            }
+        }
     }
 }
 
@@ -38736,13 +38792,13 @@ function displayGaming(day, time, nextEventTime) {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
         ctx.fillText('Day ' + day + '  \u7D50\u679C\u767A\u8868 ' + remainTimeText, 10, 22);
-        var _iteratorNormalCompletion20 = true;
-        var _didIteratorError20 = false;
-        var _iteratorError20 = undefined;
+        var _iteratorNormalCompletion22 = true;
+        var _didIteratorError22 = false;
+        var _iteratorError22 = undefined;
 
         try {
-            for (var _iterator20 = clientObj.suspendedPlayers[Symbol.iterator](), _step20; !(_iteratorNormalCompletion20 = (_step20 = _iterator20.next()).done); _iteratorNormalCompletion20 = true) {
-                var _ref39 = _step20.value;
+            for (var _iterator22 = clientObj.suspendedPlayers[Symbol.iterator](), _step22; !(_iteratorNormalCompletion22 = (_step22 = _iterator22.next()).done); _iteratorNormalCompletion22 = true) {
+                var _ref39 = _step22.value;
 
                 var _ref40 = _slicedToArray(_ref39, 2),
                     playerId = _ref40[0],
@@ -38753,16 +38809,16 @@ function displayGaming(day, time, nextEventTime) {
                 ctx.fillText(votedPlayer.displayName + ' \u3055\u3093\u306E\u51E6\u5211\u304C\u6C7A\u5B9A\u3044\u305F\u3057\u307E\u3057\u305F\u3002', 10, 120);
             }
         } catch (err) {
-            _didIteratorError20 = true;
-            _iteratorError20 = err;
+            _didIteratorError22 = true;
+            _iteratorError22 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion20 && _iterator20.return) {
-                    _iterator20.return();
+                if (!_iteratorNormalCompletion22 && _iterator22.return) {
+                    _iterator22.return();
                 }
             } finally {
-                if (_didIteratorError20) {
-                    throw _iteratorError20;
+                if (_didIteratorError22) {
+                    throw _iteratorError22;
                 }
             }
         }
@@ -38792,13 +38848,13 @@ function displayGaming(day, time, nextEventTime) {
         ctx.font = "20px 'ＭＳ Ｐゴシック'";
         ctx.fillStyle = "black";
         ctx.fillText('Day ' + day + '  \u6C7A\u6226\u6295\u7968\u7D50\u679C\u767A\u8868  ' + remainTimeText, 10, 22);
-        var _iteratorNormalCompletion21 = true;
-        var _didIteratorError21 = false;
-        var _iteratorError21 = undefined;
+        var _iteratorNormalCompletion23 = true;
+        var _didIteratorError23 = false;
+        var _iteratorError23 = undefined;
 
         try {
-            for (var _iterator21 = clientObj.suspendedPlayers[Symbol.iterator](), _step21; !(_iteratorNormalCompletion21 = (_step21 = _iterator21.next()).done); _iteratorNormalCompletion21 = true) {
-                var _ref41 = _step21.value;
+            for (var _iterator23 = clientObj.suspendedPlayers[Symbol.iterator](), _step23; !(_iteratorNormalCompletion23 = (_step23 = _iterator23.next()).done); _iteratorNormalCompletion23 = true) {
+                var _ref41 = _step23.value;
 
                 var _ref42 = _slicedToArray(_ref41, 2),
                     playerId = _ref42[0],
@@ -38809,16 +38865,16 @@ function displayGaming(day, time, nextEventTime) {
                 ctx.fillText(votedPlayer.displayName + ' \u3055\u3093\u306E\u51E6\u5211\u304C\u6C7A\u5B9A\u3044\u305F\u3057\u307E\u3057\u305F\u3002', 10, 120);
             }
         } catch (err) {
-            _didIteratorError21 = true;
-            _iteratorError21 = err;
+            _didIteratorError23 = true;
+            _iteratorError23 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion21 && _iterator21.return) {
-                    _iterator21.return();
+                if (!_iteratorNormalCompletion23 && _iterator23.return) {
+                    _iterator23.return();
                 }
             } finally {
-                if (_didIteratorError21) {
-                    throw _iteratorError21;
+                if (_didIteratorError23) {
+                    throw _iteratorError23;
                 }
             }
         }
@@ -38864,13 +38920,13 @@ function displayGaming(day, time, nextEventTime) {
             ctx.fillText('\u6628\u6669\u306E\u72A0\u7272\u8005\u306F', 40, 70);
             var positionY = 90;
             ctx.font = "14px 'ＭＳ Ｐゴシック'";
-            var _iteratorNormalCompletion22 = true;
-            var _didIteratorError22 = false;
-            var _iteratorError22 = undefined;
+            var _iteratorNormalCompletion24 = true;
+            var _didIteratorError24 = false;
+            var _iteratorError24 = undefined;
 
             try {
-                for (var _iterator22 = clientObj.killedPlayersMap[Symbol.iterator](), _step22; !(_iteratorNormalCompletion22 = (_step22 = _iterator22.next()).done); _iteratorNormalCompletion22 = true) {
-                    var _ref43 = _step22.value;
+                for (var _iterator24 = clientObj.killedPlayersMap[Symbol.iterator](), _step24; !(_iteratorNormalCompletion24 = (_step24 = _iterator24.next()).done); _iteratorNormalCompletion24 = true) {
+                    var _ref43 = _step24.value;
 
                     var _ref44 = _slicedToArray(_ref43, 2),
                         killedPlayerId = _ref44[0],
@@ -38880,16 +38936,16 @@ function displayGaming(day, time, nextEventTime) {
                     positionY += 20;
                 }
             } catch (err) {
-                _didIteratorError22 = true;
-                _iteratorError22 = err;
+                _didIteratorError24 = true;
+                _iteratorError24 = err;
             } finally {
                 try {
-                    if (!_iteratorNormalCompletion22 && _iterator22.return) {
-                        _iterator22.return();
+                    if (!_iteratorNormalCompletion24 && _iterator24.return) {
+                        _iterator24.return();
                     }
                 } finally {
-                    if (_didIteratorError22) {
-                        throw _iteratorError22;
+                    if (_didIteratorError24) {
+                        throw _iteratorError24;
                     }
                 }
             }
@@ -38916,13 +38972,13 @@ function displayGaming(day, time, nextEventTime) {
 }
 
 function checkIfImDead(players) {
-    var _iteratorNormalCompletion23 = true;
-    var _didIteratorError23 = false;
-    var _iteratorError23 = undefined;
+    var _iteratorNormalCompletion25 = true;
+    var _didIteratorError25 = false;
+    var _iteratorError25 = undefined;
 
     try {
-        for (var _iterator23 = players[Symbol.iterator](), _step23; !(_iteratorNormalCompletion23 = (_step23 = _iterator23.next()).done); _iteratorNormalCompletion23 = true) {
-            var _ref45 = _step23.value;
+        for (var _iterator25 = players[Symbol.iterator](), _step25; !(_iteratorNormalCompletion25 = (_step25 = _iterator25.next()).done); _iteratorNormalCompletion25 = true) {
+            var _ref45 = _step25.value;
 
             var _ref46 = _slicedToArray(_ref45, 2);
 
@@ -38938,16 +38994,16 @@ function checkIfImDead(players) {
             }
         }
     } catch (err) {
-        _didIteratorError23 = true;
-        _iteratorError23 = err;
+        _didIteratorError25 = true;
+        _iteratorError25 = err;
     } finally {
         try {
-            if (!_iteratorNormalCompletion23 && _iterator23.return) {
-                _iterator23.return();
+            if (!_iteratorNormalCompletion25 && _iterator25.return) {
+                _iterator25.return();
             }
         } finally {
-            if (_didIteratorError23) {
-                throw _iteratorError23;
+            if (_didIteratorError25) {
+                throw _iteratorError25;
             }
         }
     }
@@ -38986,12 +39042,30 @@ function calcRemainTime(distTime) {
     return remainText;
 }
 
+function passedTimeString(postedTime) {
+    var passedTime = new Date().getTime() - postedTime;
+    var passedHour = Math.floor(passedTime / (1000 * 60 * 60));
+    var passedMinutes = Math.floor(passedTime % (1000 * 60 * 60) / (1000 * 60));
+    var passedSeconds = Math.floor(passedTime % (1000 * 60) / 1000);
+
+    var passedText = '';
+    if (passedHour > 0) passedText += passedHour + '\u6642\u9593';
+    if (passedMinutes > 0) passedText += passedMinutes + '\u5206';
+    if (passedSeconds > 0) passedText += passedSeconds + '\u79D2';
+    passedText += ' 前';
+    if (passedHour === 0 && passedMinutes === 0 && passedSeconds === 0) passedText = '\u305F\u3063\u305F\u4ECA';
+
+    return passedText;
+}
+
 setInterval(function () {
     if (clientObj.tableState && clientObj.tableState === 'waiting') {
         displayWaiting(clientObj.startTime);
     } else if (clientObj.tableState && clientObj.tableState === 'gaming') {
         displayGaming(clientObj.day, clientObj.time, clientObj.nextEventTime);
     }
+
+    updateChatsTime();
 }, 1000); // タイマー
 
 /***/ })
